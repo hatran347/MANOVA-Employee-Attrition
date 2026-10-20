@@ -1,0 +1,22 @@
+---
+title: "Câu a – Xác định mô hình MANOVA một nhân tố, biến và giả thuyết"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Mục tiêu
+
+Xác định mô hình MANOVA một nhân tố, biến và giả thuyết.
+
+## Phân tích
+
+```{r}
+# bổ sung code r tại đây
+```
+
+## Kết quả và nhận xét
+
+Viết kết quả kiểm định, cách diễn giải và kết luận tại đây.

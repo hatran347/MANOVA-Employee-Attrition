@@ -1,0 +1,22 @@
+---
+title: "Câu g – Hạn chế của MANOVA và phương pháp thay thế"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Mục tiêu
+
+Hạn chế của MANOVA và phương pháp thay thế.
+
+## Phân tích
+
+```{r}
+# bổ sung code r tại đây
+```
+
+## Kết quả và nhận xét
+
+Viết kết quả kiểm định, cách diễn giải và kết luận tại đây.
