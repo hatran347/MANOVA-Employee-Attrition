@@ -1,0 +1,182 @@
+---
+title: "Thực hành MANOVA: Dữ liệu nhân viên (DataEA)"
+author:
+  - "Vũ Hà Thư - 25C23004"
+  - "Hà"
+date: "`r format(Sys.Date(), '%d/%m/%Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    df_print: kable
+  pdf_document:
+    toc: false
+    number_sections: true
+    df_print: kable
+    latex_engine: xelatex
+    keep_tex: false
+
+fontsize: 11pt
+geometry: margin=2cm
+mainfont: "Times New Roman"
+
+header-includes:
+  - \usepackage{float}
+  - \usepackage{booktabs}
+  - \usepackage{tikz}
+  - \usepackage{enumitem}
+  - \usepackage{array}
+  - \usepackage{fvextra}
+  - \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+  - \RecustomVerbatimEnvironment{verbatim}{Verbatim}{breaklines}
+  - \let\maketitle\relax
+  - \renewcommand{\contentsname}{Mục lục}
+---
+
+```{r setup, include=FALSE}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
+source(here::here("R", "setup.R"))
+source(here::here("R", "du_lieu.R"))
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = "center")
+
+# Bản PDF: hình vừa khổ giấy, cairo_pdf để hiển thị tiếng Việt trong hình,
+# bảng nhiều cột (> 8) được thu nhỏ cho vừa chiều ngang trang.
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(out.width = "100%", dev = "cairo_pdf")
+  knitr::opts_chunk$set(render = function(x, ...) {
+    if (!is.data.frame(x)) return(knitr::knit_print(x, ...))
+    if (ncol(x) <= 8) return(knitr::knit_print(knitr::kable(x), ...))
+    knitr::asis_output(paste0("\\begin{center}\\resizebox{\\linewidth}{!}{",
+                              knitr::kable(x, format = "latex", booktabs = TRUE),
+                              "}\\end{center}"))
+  })
+}
+
+# Gộp một notebook vào báo cáo: bỏ YAML và chunk setup (đã chạy ở trên),
+# lấy title của notebook làm tiêu đề cấp 1.
+gop_cau <- function(file) {
+  dong <- readLines(file, encoding = "UTF-8")
+  yaml <- which(dong == "---")[1:2]
+  title <- sub('^title:\\s*"?(.*?)"?\\s*$', "\\1", grep("^title:", dong[yaml[1]:yaml[2]], value = TRUE))
+  dong <- dong[-(1:yaml[2])]
+
+  bd_setup <- grep("^```\\{r setup", dong)
+  if (length(bd_setup) == 1) {
+    kt_setup <- bd_setup + which(dong[(bd_setup + 1):length(dong)] == "```")[1]
+    dong <- dong[-(bd_setup:kt_setup)]
+  }
+
+  # Bản PDF: mỗi câu bắt đầu ở trang mới
+  ngat_trang <- if (knitr::is_latex_output()) c("\\newpage", "") else character(0)
+  knitr::knit_child(text = c(ngat_trang, paste("#", title), "", dong), envir = knitr::knit_global(), quiet = TRUE)
+}
+```
+
+```{=latex}
+\pagenumbering{gobble}
+\begin{titlepage}
+\thispagestyle{empty}
+
+\begin{tikzpicture}[remember picture, overlay]
+  \draw[line width=1.5pt, black]
+    ([xshift=1.8cm, yshift=-1.8cm]current page.north west)
+    rectangle
+    ([xshift=-1.8cm, yshift=1.8cm]current page.south east);
+  \draw[line width=0.75pt, black]
+    ([xshift=2cm, yshift=-2cm]current page.north west)
+    rectangle
+    ([xshift=-2cm, yshift=2cm]current page.south east);
+\end{tikzpicture}
+
+\begin{center}
+\textbf{\fontsize{14}{17}\selectfont ĐẠI HỌC QUỐC GIA TP. HCM}\\[2pt]
+\textbf{\fontsize{14}{17}\selectfont TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN}
+
+\vspace{8pt}
+\rule{4cm}{0.6pt}\\[8pt]
+\textbf{\fontsize{13}{16}\selectfont KHOA TOÁN -- TIN HỌC}
+
+\vspace{3.5cm}
+\textbf{\fontsize{14}{17}\selectfont NHÓM ...}
+
+\vspace{3cm}
+\textbf{\fontsize{24}{28}\selectfont BÁO CÁO THỰC HÀNH}
+
+\vspace{0.8cm}
+\textbf{\fontsize{14}{17}\selectfont CHƯƠNG 4: MANOVA -- DỮ LIỆU NHÂN VIÊN (DataEA)}
+
+\vspace{2.2cm}
+\textbf{\fontsize{14}{17}\selectfont THỐNG KÊ NHIỀU CHIỀU}
+
+\vspace{1cm}
+\fontsize{12}{15}\selectfont Giảng viên hướng dẫn: \textbf{...}
+
+\vfill
+\fontsize{12}{15}\selectfont TP. Hồ Chí Minh -- `r format(Sys.Date(), '%Y')`
+\end{center}
+\end{titlepage}
+
+\thispagestyle{empty}
+\begin{center}
+\textbf{\fontsize{14}{17}\selectfont BẢNG PHÂN CÔNG CÔNG VIỆC}
+\end{center}
+
+\vspace{1cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.6cm}|>{\centering\arraybackslash}p{2cm}|>{\raggedright\arraybackslash}p{7cm}|>{\centering\arraybackslash}p{2cm}|}
+\hline
+\textbf{Họ và Tên} & \textbf{Mã số HV} & \textbf{Công việc} & \textbf{Mức độ hoàn thành} \\
+\hline
+Vũ Hà Thư & 25C23004 &
+\begin{itemize}[leftmargin=*, topsep=0pt, partopsep=0pt, itemsep=2pt, parsep=0pt]
+\item Câu (a): dữ liệu và mô hình MANOVA một nhân tố
+\item Câu (b): kiểm tra giả định
+\item Câu (c): kiểm định MANOVA một nhân tố
+\item Câu (d): phân tích hậu nghiệm
+\item Câu (e): nhận xét
+\end{itemize}
+& 100\% \\
+\hline
+Hà & ... &
+\begin{itemize}[leftmargin=*, topsep=0pt, partopsep=0pt, itemsep=2pt, parsep=0pt]
+\item Câu (f): MANOVA hai nhân tố
+\item Câu (g): hạn chế và phương pháp thay thế
+\item Thuyết trình
+\end{itemize}
+& 100\% \\
+\hline
+\end{tabular}
+\end{center}
+\renewcommand{\arraystretch}{1}
+\newpage
+
+\setcounter{tocdepth}{2}
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+```
+
+```{r phan-cong-html, echo=FALSE, results="asis", eval=knitr::is_html_output()}
+cat("**Phân công:** Vũ Hà Thư: câu (a)–(e); Hà: câu (f)–(g) và thuyết trình.\n")
+```
+
+# Câu hỏi nghiên cứu và quy ước
+
+- **MANOVA một nhân tố:** Nhóm nhân viên đã nghỉ việc và nhóm đang làm việc có khác nhau khi xét đồng thời 9 đặc điểm về thu nhập – nghề nghiệp, kinh nghiệm làm việc và tâm lý – hành vi hay không?
+- **MANOVA hai nhân tố:** Tình trạng nghỉ việc (`Attrition`) và việc làm thêm giờ (`OverTime`) có ảnh hưởng đến vectơ 4 biến tâm lý – hành vi không, và hai yếu tố này có tương tác với nhau không?
+
+Toàn bài dùng mức ý nghĩa **α = 0.05** (độ tin cậy 95%), trừ khi ghi rõ mức khác.
+
+**Quy ước mức độ vi phạm giả định** (dựa trên p-giá trị của kiểm định giả định): p ≥ 0.05 là **thỏa**; 1e-4 ≤ p < 0.05 là **vi phạm nhẹ**; p < 1e-4 là **vi phạm nặng**.
+
+```{r gop-cac-cau, echo=FALSE, results="asis"}
+for (cau in c("a", "b", "c", "d", "e", "f", "g")) {
+  cat(gop_cau(here::here("notebooks", paste0("cau_", cau, ".Rmd"))), sep = "\n")
+}
+```
