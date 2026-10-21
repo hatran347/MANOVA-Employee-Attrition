@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Knit báo cáo chung: HTML + PDF (report/main.Rmd)",
+      "type": "shell",
+      "command": "Rscript -e 'rmarkdown::render(\"report/main.Rmd\", output_format = \"all\")' && open report/main.html report/main.pdf",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Knit báo cáo chung: chỉ HTML (nhanh)",
+      "type": "shell",
+      "command": "Rscript -e 'rmarkdown::render(\"report/main.Rmd\", output_format = \"html_document\")' && open report/main.html",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Knit file Rmd đang mở",
+      "type": "shell",
+      "command": "Rscript -e 'rmarkdown::render(\"${file}\")' && open \"${fileDirname}/${fileBasenameNoExtension}.html\"",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}

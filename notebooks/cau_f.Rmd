@@ -4,12 +4,18 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
+source(here::here("R", "setup.R"))
+source(here::here("R", "du_lieu.R"))   # ea, Y (4 biến tâm lý – hành vi), bien_tl, o (4 ô Attrition.OverTime)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = "center")
 ```
 
 ## Mục tiêu
 
-MANOVA hai nhân tố: Attrition, OverTime và tương tác.
+MANOVA hai nhân tố: Attrition, OverTime và tương tác, trên vectơ 4 biến tâm lý – hành vi (`Y`).
+
+Thống kê mô tả theo ô, biểu đồ tương tác và toàn bộ kiểm tra giả định cho mô hình hai nhân tố (ngoại lai, chuẩn từng biến, chuẩn nhiều chiều, tương quan/VIF, Box's M, Levene) đã thực hiện ở câu (b), mục "hai nhân tố". Câu này bắt đầu từ mô hình và kiểm định MANOVA hai nhân tố.
 
 ## Phân tích
 
