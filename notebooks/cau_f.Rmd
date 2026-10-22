@@ -6,8 +6,9 @@ output: html_document
 ```{r setup, include=FALSE}
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
+here::i_am("notebooks/cau_f.Rmd")   # xác định thư mục gốc project khi chạy riêng notebook
 source(here::here("R", "setup.R"))
-source(here::here("R", "du_lieu.R"))   # ea, Y (4 biến tâm lý – hành vi), bien_tl, o (4 ô Attrition.OverTime)
+source(here::here("R", "du_lieu.R"))   # ea, Y (4 biến tâm lý – hành vi), bien_tl, o (4 ô Working-NoOT, Left-NoOT, Working-OT, Left-OT)
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = "center")
 ```
 

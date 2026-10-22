@@ -13,7 +13,8 @@ packages <- c(
   "corrplot",  # ma tran tuong quan
   "tidyr",     # pivot_longer
   "dplyr",     # xu ly du lieu
-  "knitr"      # kable
+  "knitr",     # kable
+  "psych"      # describe
 )
 
 missing_pkgs <- setdiff(packages, rownames(installed.packages()))
@@ -30,3 +31,23 @@ fp <- function(x) sapply(x, function(v) format(signif(v, 3), digits = 3))
 
 # Muc do vi pham gia dinh theo quy uoc cua mon hoc
 muc_do <- function(pv) ifelse(pv >= 0.05, "Thỏa", ifelse(pv >= 1e-4, "Vi phạm nhẹ", "Vi phạm nặng"))
+
+# Bang dinh dang dung chung: kable + kableExtra (soc, gon, can giua; tu thu nho trong PDF)
+# kableExtra la goi tuy chon: neu chua cai duoc thi bang() van chay, chi khong co dinh dang them.
+if (!requireNamespace("kableExtra", quietly = TRUE)) {
+  try(install.packages("kableExtra"), silent = TRUE)
+}
+co_kableExtra <- requireNamespace("kableExtra", quietly = TRUE)
+
+bang <- function(x, ..., digits = 3, caption = NULL) {
+  k <- knitr::kable(x, digits = digits, caption = caption, booktabs = TRUE, ...)
+  if (!co_kableExtra) return(k)
+  kableExtra::kable_styling(k, bootstrap_options = c("striped", "hover", "condensed"),
+                            full_width = FALSE, position = "center",
+                            latex_options = c("hold_position", "scale_down", "striped"))
+}
+
+# Cac ham dinh dang bo sung cua kableExtra; bo qua neu chua co goi
+them_tieu_de <- function(k, header) if (co_kableExtra) kableExtra::add_header_above(k, header) else k
+gop_dong     <- function(k, cot)    if (co_kableExtra) kableExtra::collapse_rows(k, columns = cot, valign = "middle") else k
+cuon         <- function(k, cao)    if (co_kableExtra) kableExtra::scroll_box(k, width = "100%", height = cao) else k

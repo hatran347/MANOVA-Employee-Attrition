@@ -12,6 +12,7 @@ output:
 ```{r setup, include=FALSE}
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
+here::i_am("notebooks/cau_b.Rmd")   # xác định thư mục gốc project khi chạy riêng notebook
 source(here::here("R", "setup.R"))
 source(here::here("R", "du_lieu.R"))   # ea, X, X1, X2, Y, nhom, o, ... (xem câu a)
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = "center")
@@ -24,17 +25,32 @@ Giả định được kiểm tra cho cả hai mô hình:
 
 ## Thống kê mô tả
 
+Trong các bảng và biểu đồ, nhóm `Attrition` được ký hiệu **Working** (đang làm việc, Attrition = No) và **Left** (đã nghỉ việc, Attrition = Yes); `OverTime` được ký hiệu **NoOT** (không làm thêm giờ) và **OT** (có làm thêm giờ). 4 ô của mô hình hai nhân tố là `Working-NoOT`, `Left-NoOT`, `Working-OT`, `Left-OT`.
+
 Phần này mô tả từng biến phụ thuộc theo nhân tố trước khi kiểm tra giả định: theo `Attrition` cho MANOVA một nhân tố (9 biến), và theo từng ô `Attrition × OverTime` cho MANOVA hai nhân tố (4 biến tâm lý – hành vi).
 
 ### Mô tả chung
 
 ```{r mo-ta-chung}
-knitr::kable(summary(X))
+mo_ta_chung <- t(sapply(as.data.frame(X), function(x) c(summary(x), "Độ lệch chuẩn" = sd(x))))
+bang(mo_ta_chung, digits = 2, col.names = c("Nhỏ nhất", "Q1", "Trung vị", "Trung bình", "Q3", "Lớn nhất", "Độ lệch chuẩn"))
 ```
 
 ### Một nhân tố (9 biến, theo Attrition)
 
-Với mỗi biến, bảng dưới cho trung bình, trung vị, độ lệch chuẩn ở từng nhóm, chênh lệch trung bình (Yes − No) và chênh lệch chuẩn hóa $(\bar x_{Yes} - \bar x_{No}) / s_{gộp}$, với $s_{gộp}^2 = \frac{(n_1 - 1)s_1^2 + (n_2 - 1)s_2^2}{n - 2}$. Chênh lệch chuẩn hóa đưa 9 biến về cùng thang (đơn vị độ lệch chuẩn) để so sánh mức chênh lệch giữa các biến có đơn vị khác nhau.
+Với mỗi biến, bảng dưới cho trung bình, trung vị, độ lệch chuẩn ở từng nhóm, chênh lệch trung bình (Left − Working) và chênh lệch chuẩn hóa
+
+$$
+d = \frac{\bar x_{2} - \bar x_{1}}{s_{gộp}}, \qquad s_{gộp}^2 = \frac{(n_1 - 1)s_1^2 + (n_2 - 1)s_2^2}{n_1 + n_2 - 2},
+$$
+
+trong đó, với một biến cụ thể (ví dụ `MonthlyIncome`):
+
+- $\bar x_1$, $s_1^2$: trung bình và phương sai mẫu của biến ở nhóm Working ($n_1 = 1233$ nhân viên);
+- $\bar x_2$, $s_2^2$: trung bình và phương sai mẫu của biến ở nhóm Left ($n_2 = 237$ nhân viên);
+- $s_{gộp}^2$: phương sai gộp, là trung bình có trọng số (theo bậc tự do $n_\ell - 1$) của phương sai hai nhóm, ước lượng phương sai chung trong nhóm của biến.
+
+$d$ cho biết trung bình nhóm Left lệch bao nhiêu **độ lệch chuẩn** so với nhóm Working ($d < 0$: nhóm Left thấp hơn). Vì không phụ thuộc đơn vị đo, $d$ cho phép so sánh mức chênh lệch giữa thu nhập (đơn vị tiền), số năm và thang điểm 1–4.
 
 ```{r mo-ta-attrition}
 mo_ta_A <- do.call(rbind, lapply(bien, function(v) {
@@ -46,14 +62,16 @@ mo_ta_A <- do.call(rbind, lapply(bien, function(v) {
              chenh_tb = mean(x1) - mean(x0),
              chenh_chuan_hoa = (mean(x1) - mean(x0)) / s_gop)
 }))
-knitr::kable(mo_ta_A, digits = 2)
+bang(mo_ta_A, digits = 2, row.names = FALSE,
+     col.names = c("Biến", "TB", "Trung vị", "ĐLC", "TB", "Trung vị", "ĐLC", "Chênh lệch TB", "Chênh lệch chuẩn hóa")) |>
+  them_tieu_de(header = c(" " = 1, "Working" = 3, "Left" = 3, "Left − Working" = 2))
 ```
 
 ```{r boxplot, fig.width=12, fig.height=9}
 par(mfrow = c(3, 3), mar = c(4, 4.5, 3, 1))
 for (v in bien) {
-  boxplot(ea[[v]] ~ ea$Attrition, col = c("lightblue", "salmon"),
-          main = v, xlab = "Attrition", ylab = "")
+  boxplot(ea[[v]] ~ nhom_nhan, col = c("lightblue", "salmon"),
+          main = v, xlab = "", ylab = "")
 }
 par(mfrow = c(1, 1))
 ```
@@ -64,10 +82,13 @@ par(mfrow = c(1, 1))
 bien_thu_bac <- c("JobLevel", bien_tl)
 ty_le_A <- do.call(rbind, lapply(bien_thu_bac, function(v) {
   tl <- round(prop.table(table(ea$Attrition, factor(ea[[v]], levels = 1:5)), 1) * 100, 1)
-  data.frame(bien = v, Attrition = rownames(tl), as.data.frame.matrix(tl), check.names = FALSE, row.names = NULL)
+  data.frame(bien = v, nhom = nhan_attrition[rownames(tl)], as.data.frame.matrix(tl), check.names = FALSE, row.names = NULL)
 }))
 ty_le_A$`5`[ty_le_A$bien != "JobLevel"] <- NA   # 4 biến tâm lý – hành vi chỉ có mức 1–4
-ty_le_A
+options(knitr.kable.NA = "")
+bang(ty_le_A, digits = 1, row.names = FALSE, col.names = c("Biến", "Nhóm", "Mức 1", "Mức 2", "Mức 3", "Mức 4", "Mức 5")) |>
+  them_tieu_de(header = c(" " = 2, "Tỷ lệ (%) trong nhóm" = 5)) |>
+  gop_dong(cot = 1)
 ```
 
 ```{r bieu-do-ty-le, fig.width=12, fig.height=6}
@@ -78,7 +99,7 @@ for (v in bien_thu_bac) {
           xlab = "Mức", ylab = "% trong nhóm", ylim = c(0, max(tl) * 1.15))
 }
 plot.new()
-legend("center", legend = c("Attrition = No", "Attrition = Yes"),
+legend("center", legend = c("Working (đang làm)", "Left (đã nghỉ)"),
        fill = c("lightblue", "salmon"), bty = "n", cex = 1.3)
 par(mfrow = c(1, 1))
 ```
@@ -95,24 +116,17 @@ par(mfrow = c(1, 1))
 
 ```{r mo-ta-o}
 # Cỡ mẫu và tỷ lệ nghỉ việc theo OverTime
-bang_o <- table(ea$Attrition, ea$OverTime)
-dimnames(bang_o) <- list(paste("Attrition =", levels(ea$Attrition)), paste("OverTime =", levels(ea$OverTime)))
-knitr::kable(bang_o)
-
-# Tỷ lệ (%) nghỉ việc trong từng mức OverTime
-ty_le_nghi <- round(prop.table(table(ea$OverTime, ea$Attrition), 1) * 100, 1)
-dimnames(ty_le_nghi) <- list(paste("OverTime =", levels(ea$OverTime)), paste("Attrition =", levels(ea$Attrition)))
-knitr::kable(ty_le_nghi)
+bang_o <- table(nhom_nhan, nhan_overtime[as.character(ea$OverTime)])
+ty_le_nghi <- round(prop.table(bang_o, 2) * 100, 1)       # % theo cột (trong từng mức OverTime)
+bang_o2 <- cbind(as.data.frame.matrix(bang_o), as.data.frame.matrix(ty_le_nghi))
+bang(bang_o2, digits = 1, col.names = c("NoOT", "OT", "NoOT", "OT")) |>
+  them_tieu_de(header = c(" " = 1, "Số nhân viên" = 2, "Tỷ lệ (%) trong mức OverTime" = 2))
 
 # Trung bình và độ lệch chuẩn từng biến trong 4 ô
-mo_ta_B <- do.call(rbind, lapply(bien_tl, function(v) {
-  data.frame(bien = v,
-             o = levels(o),
-             n = as.vector(table(o)),
-             tb = as.vector(tapply(ea[[v]], o, mean)),
-             dlc = as.vector(tapply(ea[[v]], o, sd)))
-}))
-knitr::kable(mo_ta_B, digits = 2)
+mo_ta_B <- t(sapply(bien_tl, function(v)
+  sprintf("%.2f (%.2f)", tapply(ea[[v]], o, mean), tapply(ea[[v]], o, sd))))
+colnames(mo_ta_B) <- paste0(levels(o), " (n = ", table(o), ")")
+bang(mo_ta_B, caption = "Trung bình (độ lệch chuẩn) theo ô")
 ```
 
 ```{r boxplot-o, fig.width=12, fig.height=8}
@@ -120,8 +134,8 @@ par(mfrow = c(2, 2), mar = c(5, 4.5, 3, 1))
 for (v in bien_tl) {
   boxplot(ea[[v]] ~ ea$Attrition + ea$OverTime, col = c("lightblue", "salmon"),
           xaxt = "n", main = v, xlab = "", ylab = "")
-  mtext(rep(c("No", "Yes"), 2), side = 1, line = 0.8, at = 1:4)
-  mtext(c("OverTime = No", "OverTime = Yes"), side = 1, line = 2.5, at = c(1.5, 3.5), font = 2)
+  mtext(rep(c("Working", "Left"), 2), side = 1, line = 0.8, at = 1:4)
+  mtext(c("NoOT (không làm thêm giờ)", "OT (có làm thêm giờ)"), side = 1, line = 2.5, at = c(1.5, 3.5), font = 2)
 }
 par(mfrow = c(1, 1))
 ```
@@ -131,9 +145,9 @@ Biểu đồ tương tác (profile plot) dưới vẽ trung bình của từng b
 ```{r bieu-do-tuong-tac, fig.width=12, fig.height=8}
 par(mfrow = c(2, 2), mar = c(4, 4.5, 3, 1))
 for (v in bien_tl) {
-  interaction.plot(ea$OverTime, ea$Attrition, ea[[v]], type = "b", pch = c(19, 17),
-                   col = c("steelblue", "red"), lwd = 2, main = v,
-                   xlab = "OverTime", ylab = "Trung bình", trace.label = "Attrition")
+  interaction.plot(factor(nhan_overtime[as.character(ea$OverTime)], levels = c("NoOT", "OT")), nhom_nhan, ea[[v]],
+                   type = "b", pch = c(19, 17), col = c("steelblue", "salmon"), lwd = 2, main = v,
+                   xlab = "OverTime", ylab = "Trung bình", trace.label = "Nhóm")
 }
 par(mfrow = c(1, 1))
 ```
@@ -143,15 +157,26 @@ par(mfrow = c(1, 1))
 - Cỡ mẫu 4 ô không cân bằng (110 đến 944). Tỷ lệ nghỉ việc ở nhóm làm thêm giờ (30.5%) cao gấp khoảng 3 lần nhóm không làm thêm giờ (10.4%), tức hai nhân tố không độc lập với nhau trong mẫu; vì vậy tác động riêng của từng nhân tố cần được đánh giá khi đã tính đến nhân tố còn lại (tổng bình phương loại II trong `car::Manova`, dùng ở câu f).
 - Ở cả hai mức `OverTime`, nhóm nghỉ việc có trung bình thấp hơn nhóm đang làm việc ở cả 4 biến; ví dụ hài lòng công việc 2.36 so với 2.75 (không làm thêm giờ) và 2.56 so với 2.87 (có làm thêm giờ), hài lòng môi trường 2.33 so với 2.71 và 2.58 so với 2.96.
 - Với `JobSatisfaction`, `EnvironmentSatisfaction` và `JobInvolvement`, hai đường trên biểu đồ tương tác gần song song (khoảng cách giữa hai nhóm Attrition 0.25–0.39 ở cả hai mức `OverTime`). Với `WorkLifeBalance`, khoảng cách thu hẹp từ 0.16 (không làm thêm giờ) xuống 0.06 (có làm thêm giờ), gợi ý có thể có tương tác ở biến này.
-- Độ lệch chuẩn trong ô dao động 0.66–1.17; ô `Yes.No` có độ lệch chuẩn lớn nhất ở `WorkLifeBalance` (0.89) và `JobInvolvement` (0.80), phù hợp với kết quả Levene ở dưới.
+- Độ lệch chuẩn trong ô dao động 0.66–1.17; ô `Left-NoOT` có độ lệch chuẩn lớn nhất ở `WorkLifeBalance` (0.89) và `JobInvolvement` (0.80), phù hợp với kết quả Levene ở dưới.
 
 ## Ngoại lai nhiều chiều (khoảng cách Mahalanobis)
 
-Với mỗi nhóm, tính bình phương khoảng cách Mahalanobis của từng quan sát đến vectơ trung bình mẫu của nhóm:
+Với mỗi nhóm (mô hình một nhân tố) hoặc mỗi ô (mô hình hai nhân tố), tính bình phương khoảng cách Mahalanobis của từng nhân viên đến tâm của nhóm (Johnson & Wichern, mục 4.6–4.7):
 
-$$d_j^2 = (\mathbf x_j - \bar{\mathbf x})' \mathbf S^{-1} (\mathbf x_j - \bar{\mathbf x}).$$
+$$d_j^2 = (\mathbf x_j - \bar{\mathbf x})' \mathbf S^{-1} (\mathbf x_j - \bar{\mathbf x}), \qquad j = 1, \dots, n_\ell,$$
 
-Nếu dữ liệu có phân phối chuẩn p chiều thì $d_j^2$ có phân phối xấp xỉ $\chi^2_p$. Với mỗi quan sát, kiểm định giả thuyết
+trong đó:
+
+- $\mathbf x_j$: vectơ $p \times 1$ các giá trị của nhân viên thứ $j$. Với mô hình một nhân tố, $p = 9$ và $\mathbf x_j = (\text{MonthlyIncome}_j, \text{JobLevel}_j, \dots, \text{JobInvolvement}_j)'$; với mô hình hai nhân tố, $p = 4$ gồm 4 biến tâm lý – hành vi.
+- $\bar{\mathbf x}$: vectơ trung bình mẫu của nhóm (ô) chứa nhân viên đó, mỗi thành phần là trung bình của một biến trong nhóm.
+- $\mathbf S$: ma trận hiệp phương sai mẫu $p \times p$ của nhóm (ô). Phần tử trên đường chéo $s_{kk}$ là phương sai của biến $k$; phần tử ngoài đường chéo $s_{ik}$ là hiệp phương sai giữa biến $i$ và biến $k$.
+- $\mathbf S^{-1}$: nghịch đảo của $\mathbf S$. Nhân với $\mathbf S^{-1}$ vừa chia mỗi độ lệch cho độ phân tán của biến (nên thu nhập tính bằng tiền và thang điểm 1–4 được đưa về cùng thang), vừa trừ phần trùng lặp do các biến tương quan với nhau (ví dụ thu nhập và cấp bậc).
+
+$d_j^2$ là khoảng cách "chuẩn hóa" từ nhân viên $j$ đến tâm nhóm: $d_j^2$ lớn nghĩa là tổ hợp giá trị của nhân viên đó hiếm gặp so với phần còn lại của nhóm, kể cả khi từng giá trị riêng lẻ không bất thường. Nếu dữ liệu có phân phối chuẩn $p$ chiều thì $d_j^2$ có phân phối xấp xỉ $\chi^2_p$.
+
+**Biểu đồ chi-bình phương:** sắp xếp $d^2_{(1)} \le \dots \le d^2_{(n)}$ và vẽ theo phân vị lý thuyết $q_{(j)} = \chi^2_p\big((j - \tfrac12)/n\big)$. Nếu dữ liệu chuẩn, các điểm nằm quanh đường thẳng $y = x$; các điểm cao vọt ở đầu phải là ngoại lai.
+
+Với mỗi quan sát, kiểm định giả thuyết
 
 $$
 \begin{aligned}
@@ -175,13 +200,15 @@ d2_theo_nhom <- function(M, f) {
 # Bảng tổng hợp quan sát xa nhất của mỗi nhóm (ô)
 bang_ngoai_lai <- function(d2, f, df) {
   nguong <- qchisq(0.999, df = df)
-  data.frame(nhom = levels(f),
-             n = as.vector(table(f)),
-             d2_lon_nhat = round(tapply(d2, f, max), 2),
-             p_value = fp(pchisq(tapply(d2, f, max), df = df, lower.tail = FALSE)),
-             nguong = round(nguong, 2),
-             so_ngoai_lai = as.vector(tapply(d2 > nguong, f, sum)),
-             row.names = NULL)
+  kq <- data.frame(nhom = levels(f),
+                   n = as.vector(table(f)),
+                   d2_lon_nhat = round(tapply(d2, f, max), 2),
+                   p_value = fp(pchisq(tapply(d2, f, max), df = df, lower.tail = FALSE)),
+                   nguong = round(nguong, 2),
+                   so_ngoai_lai = as.vector(tapply(d2 > nguong, f, sum)),
+                   row.names = NULL)
+  bang(kq, row.names = FALSE,
+       col.names = c("Nhóm", "n", "d² lớn nhất", "p-giá trị", paste0("Ngưỡng χ²", df, "(0.999)"), "Số ngoại lai"))
 }
 ```
 
@@ -189,12 +216,14 @@ bang_ngoai_lai <- function(d2, f, df) {
 
 ```{r ngoai-lai-A}
 d2_A <- d2_theo_nhom(X, nhom)
-bang_ngoai_lai(d2_A, nhom, df = 9)
+bang_ngoai_lai(d2_A, nhom_nhan, df = 9)
 
 # Thông tin các quan sát ngoại lai
 ngoai_lai_A <- which(d2_A > qchisq(0.999, df = 9))
-data.frame(dong = ngoai_lai_A, ea[ngoai_lai_A, c("EmployeeNumber", "Attrition", bien)],
-           d2 = round(d2_A[ngoai_lai_A], 2), row.names = NULL)
+ds_ngoai_lai <- data.frame(dong = ngoai_lai_A, ea[ngoai_lai_A, c("EmployeeNumber", bien)],
+                           nhom = nhom_nhan[ngoai_lai_A], d2 = round(d2_A[ngoai_lai_A], 2), row.names = NULL)
+bang(ds_ngoai_lai, row.names = FALSE) |>
+  cuon(cao = "320px")
 ```
 
 ```{r chi-square-plot, fig.width=12, fig.height=4.5}
@@ -202,18 +231,18 @@ par(mfrow = c(1, 3))
 for (l in levels(nhom)) {
   d2 <- sort(d2_A[nhom == l]); m <- length(d2)
   plot(qchisq(((1:m) - 0.5) / m, df = 9), d2, pch = 19, cex = 0.6,
-       main = paste("Attrition =", l), xlab = "Phân vị chi-bình phương (df = 9)", ylab = "d2 đã sắp xếp")
-  abline(0, 1, col = "red")
+       main = nhan_attrition[l], xlab = "Phân vị chi-bình phương (df = 9)", ylab = "d2 đã sắp xếp")
+  abline(0, 1, col = "salmon")
 }
 hist(d2_A, freq = FALSE, breaks = 40, main = "Histogram d2 (9 biến)", xlab = "d2")
-curve(dchisq(x, df = 9), add = TRUE, col = "red", lwd = 2)
-abline(v = qchisq(0.999, df = 9), col = "blue", lty = 2)
+curve(dchisq(x, df = 9), add = TRUE, col = "salmon", lwd = 2)
+abline(v = qchisq(0.999, df = 9), col = "lightblue", lty = 2)
 par(mfrow = c(1, 1))
 ```
 
 **Nhận xét:**
 
-- **Một nhân tố** (9 biến, ngưỡng $\chi^2_9(0.999) = 27.88$): nhóm No có 17 quan sát vượt ngưỡng ($d^2$ lớn nhất 54.21, p-giá trị = 1.72e-08), nhóm Yes có 6 quan sát ($d^2$ lớn nhất 62.79, p-giá trị = 3.87e-10). Với 23 quan sát này, p-giá trị < 0.001 nên ta bác bỏ $H_0$ với mức ý nghĩa 0.1%, nghĩa là đây là các quan sát ngoại lai nhiều chiều (1.6% mẫu).
+- **Một nhân tố** (9 biến, ngưỡng $\chi^2_9(0.999) = 27.88$): nhóm Working có 17 quan sát vượt ngưỡng ($d^2$ lớn nhất 54.21, p-giá trị = 1.72e-08), nhóm Left có 6 quan sát ($d^2$ lớn nhất 62.79, p-giá trị = 3.87e-10). Với 23 quan sát này, p-giá trị < 0.001 nên ta bác bỏ $H_0$ với mức ý nghĩa 0.1%, nghĩa là đây là các quan sát ngoại lai nhiều chiều (1.6% mẫu).
 - Phần lớn các quan sát này là nhân viên có thâm niên rất dài (tổng số năm làm việc 24–40), nhiều người có thu nhập và cấp bậc cao (cấp 4–5); số còn lại có có tổ hợp ít gặp như nhiều năm kinh nghiệm nhưng mới vào công ty (dòng 34 và 51: 19 và 23 năm làm việc, 1 năm tại công ty). Mọi giá trị đều hợp lệ và thỏa ràng buộc logic ở câu (a), nên các quan sát được **giữ lại**.
 - Biểu đồ chi-bình phương: các điểm lệch lên khỏi đường thẳng ở phần đuôi phải, nghĩa là phân phối có đuôi nặng hơn chuẩn, phù hợp với tính lệch phải của thu nhập và số năm làm việc.
 
@@ -230,7 +259,7 @@ for (l in levels(o)) {
   d2 <- sort(d2_B[o == l]); m <- length(d2)
   plot(qchisq(((1:m) - 0.5) / m, df = 4), d2, pch = 19, cex = 0.6,
        main = paste("Ô", l), xlab = "Phân vị chi-bình phương (df = 4)", ylab = "d2 đã sắp xếp")
-  abline(0, 1, col = "red")
+  abline(0, 1, col = "salmon")
 }
 par(mfrow = c(1, 1))
 ```
@@ -248,17 +277,33 @@ H_A &: \text{biến không có phân phối chuẩn}
 \end{aligned}
 $$
 
+Thống kê Shapiro-Wilk cho một biến trong một nhóm (ô) có $n$ quan sát:
+
+$$
+W = \frac{\left(\sum_{i=1}^{n} a_i\, x_{(i)}\right)^2}{\sum_{i=1}^{n} (x_i - \bar x)^2},
+$$
+
+trong đó:
+
+- $x_1, \dots, x_n$: giá trị của biến (ví dụ `WorkLifeBalance`) của các nhân viên trong nhóm; $\bar x$ là trung bình của chúng.
+- $x_{(1)} \le x_{(2)} \le \dots \le x_{(n)}$: các giá trị đó sau khi sắp xếp tăng dần (thống kê thứ tự).
+- $a_i$: hệ số cố định, tính từ trung bình và hiệp phương sai của các thống kê thứ tự của một mẫu cỡ $n$ lấy từ phân phối chuẩn tắc; chỉ phụ thuộc $n$, không phụ thuộc dữ liệu.
+- Mẫu số $\sum (x_i - \bar x)^2 = (n-1)s^2$: tổng bình phương độ lệch, tỷ lệ với phương sai mẫu.
+
+Tử số là bình phương của một ước lượng độ lệch chuẩn **nếu dữ liệu chuẩn**, mẫu số là ước lượng thông thường; nên $0 < W \le 1$, $W$ gần 1 khi các giá trị sắp xếp khớp với dạng phân phối chuẩn, và $W$ nhỏ (p-giá trị nhỏ) khi phân phối lệch, nhiều giá trị trùng nhau hoặc có đuôi nặng.
+
 ### Một nhân tố (9 biến × 2 nhóm)
 
 ```{r shapiro-A}
 bang_shapiro_A <- sapply(levels(nhom), function(l)
   apply(X[nhom == l, ], 2, function(x) shapiro.test(x)$p.value))
-knitr::kable(apply(bang_shapiro_A, 2, fp))
+colnames(bang_shapiro_A) <- nhan_attrition[colnames(bang_shapiro_A)]
+bang(apply(bang_shapiro_A, 2, fp), caption = "p-giá trị Shapiro-Wilk")
 ```
 
 ```{r hist-bien, fig.width=12, fig.height=9}
 par(mfrow = c(3, 3), mar = c(4, 4.5, 3, 1))
-for (v in bien) hist(ea[[v]], breaks = 30, main = v, xlab = "", col = "grey85")
+for (v in bien) hist(ea[[v]], breaks = 30, main = v, xlab = "", col = "salmon")
 par(mfrow = c(1, 1))
 ```
 
@@ -269,7 +314,7 @@ par(mfrow = c(1, 1))
 ```{r shapiro-B}
 bang_shapiro_B <- sapply(levels(o), function(l)
   apply(Y[o == l, ], 2, function(x) shapiro.test(x)$p.value))
-knitr::kable(apply(bang_shapiro_B, 2, fp))
+bang(apply(bang_shapiro_B, 2, fp), caption = "p-giá trị Shapiro-Wilk")
 ```
 
 **Nhận xét:** Cả 16 trường hợp có p-giá trị < 0.05 (lớn nhất 4.86e-09) nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là không biến tâm lý – hành vi nào có phân phối chuẩn trong ô; p-giá trị < 1e-4 nên đây là **vi phạm nặng**, do các biến chỉ nhận 4 giá trị 1–4.
@@ -284,6 +329,15 @@ H_0 &: \text{vectơ biến phụ thuộc có phân phối chuẩn nhiều chiề
 H_A &: \text{vectơ biến phụ thuộc không có phân phối chuẩn nhiều chiều}
 \end{aligned}
 $$
+
+`rstatix::mshapiro_test()` đưa bài toán nhiều chiều về một chiều rồi dùng Shapiro-Wilk:
+
+1. Trong mỗi nhóm (ô), tính độ lệch $\mathbf r_j = \mathbf x_j - \bar{\mathbf x}$ của từng nhân viên và ma trận tổng tích chéo $\mathbf A = \sum_j \mathbf r_j \mathbf r_j' = (n - 1)\mathbf S$.
+2. Tìm nhân viên xa tâm nhất theo khoảng cách $\mathbf r_j' \mathbf A^{-1} \mathbf r_j$ (tỷ lệ với $d_j^2$ ở mục ngoại lai); gọi độ lệch của nhân viên này là $\mathbf r_{max}$.
+3. Chiếu mọi quan sát lên hướng $\mathbf c = \mathbf A^{-1}\mathbf r_{max}$: $z_j = \mathbf c' \mathbf x_j$, được một biến một chiều $z$.
+4. Tính $W$ của Shapiro-Wilk cho $z_1, \dots, z_n$ như công thức ở mục trên.
+
+Nếu vectơ $\mathbf x$ chuẩn nhiều chiều thì mọi tổ hợp tuyến tính $\mathbf c'\mathbf x$ đều chuẩn (Johnson & Wichern, Kết quả 4.2), nên $z$ phải chuẩn. Hướng $\mathbf c$ được chọn theo quan sát xa tâm nhất, là hướng mà độ lệch khỏi phân phối chuẩn dễ thể hiện nhất; $W$ nhỏ trên hướng này là bằng chứng chống lại chuẩn nhiều chiều.
 
 ```{r mshapiro-ham}
 bang_mshapiro <- function(M, f) {
@@ -300,24 +354,36 @@ bang_mshapiro <- function(M, f) {
 ### Một nhân tố (9 biến, theo Attrition)
 
 ```{r mshapiro-A}
-bang_mshapiro_A <- bang_mshapiro(X, nhom)
-transform(bang_mshapiro_A, p_value = fp(p_value))
+bang_mshapiro_A <- bang_mshapiro(X, nhom_nhan)
+bang(transform(bang_mshapiro_A, p_value = fp(p_value)), row.names = FALSE,
+     col.names = c("Nhóm", "Thống kê W", "p-giá trị"))
 ```
 
-**Nhận xét:** Nhóm No (p-giá trị = 1.61e-27) và nhóm Yes (p-giá trị = 3.98e-21) có p-giá trị < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ 9 biến không có phân phối chuẩn nhiều chiều; p-giá trị < 1e-4 nên đây là **vi phạm nặng**.
+**Nhận xét:** Nhóm No (p-giá trị = 1.61e-27) và nhóm Left (p-giá trị = 3.98e-21) có p-giá trị < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ 9 biến không có phân phối chuẩn nhiều chiều; p-giá trị < 1e-4 nên đây là **vi phạm nặng**.
 
 ### Hai nhân tố (4 biến, theo 4 ô)
 
 ```{r mshapiro-B}
 bang_mshapiro_B <- bang_mshapiro(Y, o)
-transform(bang_mshapiro_B, p_value = fp(p_value))
+bang(transform(bang_mshapiro_B, p_value = fp(p_value)), row.names = FALSE,
+     col.names = c("Ô", "Thống kê W", "p-giá trị"))
 ```
 
-**Nhận xét:** Ô `Yes.No` có p-giá trị = 0.566 > 0.05 nên ta không bác bỏ $H_0$, nghĩa là chưa có cơ sở cho rằng vectơ 4 biến trong ô này không chuẩn. Ba ô `No.No` (p-giá trị = 0.000217), `No.Yes` (0.0134) và `Yes.Yes` (0.00377) có p-giá trị < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%; p-giá trị > 1e-4 nên đây là vi phạm nhẹ.
+**Nhận xét:** Ô `Left-NoOT` có p-giá trị = 0.566 > 0.05 nên ta không bác bỏ $H_0$, nghĩa là chưa có cơ sở cho rằng vectơ 4 biến trong ô này không chuẩn. Ba ô `Working-NoOT` (p-giá trị = 0.000217), `Working-OT` (0.0134) và `Left-OT` (0.00377) có p-giá trị < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%; p-giá trị > 1e-4 nên đây là vi phạm nhẹ.
 
 ## Tương quan và đa cộng tuyến giữa các biến phụ thuộc
 
 Việc xét đồng thời các biến bằng MANOVA có ý nghĩa khi các biến phụ thuộc có tương quan với nhau; đồng thời các biến không được có đa cộng tuyến để ma trận phần dư $\mathbf W$ khả nghịch.
+
+**Hệ số tương quan Pearson** giữa hai biến $i$ và $k$ trong một nhóm:
+
+$$
+r_{ik} = \frac{s_{ik}}{\sqrt{s_{ii}}\sqrt{s_{kk}}} = \frac{\sum_j (x_{ji} - \bar x_i)(x_{jk} - \bar x_k)}{\sqrt{\sum_j (x_{ji} - \bar x_i)^2}\sqrt{\sum_j (x_{jk} - \bar x_k)^2}},
+$$
+
+với $x_{ji}$ là giá trị biến $i$ của nhân viên $j$, $\bar x_i$ là trung bình biến $i$ trong nhóm, $s_{ik}$ là hiệp phương sai và $s_{ii}$, $s_{kk}$ là phương sai của hai biến. $r_{ik} \in [-1, 1]$ đo mức độ hai biến cùng tăng ($r > 0$) hoặc ngược chiều ($r < 0$) theo đường thẳng. Tương quan được tính **trong từng nhóm (ô)**, vì nếu gộp các nhóm thì khác biệt trung bình giữa nhóm có thể tạo ra tương quan giả.
+
+**Ma trận phần dư.** Với mô hình một nhân tố, $\mathbf W = (n_1 - 1)\mathbf S_1 + (n_2 - 1)\mathbf S_2$, trong đó $\mathbf S_1$, $\mathbf S_2$ là ma trận hiệp phương sai $9 \times 9$ của nhóm Working và Left: $\mathbf W$ cộng dồn biến thiên **trong nhóm** của 9 biến. Với mô hình hai nhân tố, $\mathbf E = \sum_{\ell,k,r} (\mathbf x_{\ell k r} - \bar{\mathbf x}_{\ell k})(\mathbf x_{\ell k r} - \bar{\mathbf x}_{\ell k})'$ cộng dồn biến thiên **trong ô** của 4 biến, với $\bar{\mathbf x}_{\ell k}$ là trung bình của ô (mức $\ell$ của Attrition, mức $k$ của OverTime). Các thống kê MANOVA dùng $\mathbf W^{-1}$ (hoặc $\mathbf E^{-1}$), nên các ma trận này phải khả nghịch.
 
 **Kiểm tra đa cộng tuyến bằng VIF.** VIF được tính trên ma trận tương quan gộp trong nhóm $\mathbf R_{pooled}$, chuẩn hóa từ ma trận phần dư $\mathbf W = \sum_\ell (n_\ell - 1)\mathbf S_\ell$:
 
@@ -342,13 +408,13 @@ par(mfrow = c(1, 1))
 W_A <- (n1 - 1) * cov(X1) + (n2 - 1) * cov(X2)
 R_pooled_A <- cov2cor(W_A)
 vif_A <- diag(solve(R_pooled_A))
-knitr::kable(data.frame(bien = bien, VIF = round(vif_A, 2), R2 = round(1 - 1 / vif_A, 3), row.names = NULL))
-det(R_pooled_A)
+bang(data.frame(bien = bien, VIF = vif_A, R2 = 1 - 1 / vif_A), row.names = FALSE,
+     col.names = c("Biến", "VIF", "R²_j = 1 − 1/VIF"), caption = paste0("det(R_pooled) = ", round(det(R_pooled_A), 4)))
 ```
 
 **Nhận xét:**
 
-- **Tương quan:** trong mỗi nhóm, 5 biến thu nhập và kinh nghiệm tương quan dương với nhau (r từ 0.32 đến 0.95 ở nhóm No, từ 0.53 đến 0.95 ở nhóm Yes), mạnh nhất là `MonthlyIncome` – `JobLevel` (r ≈ 0.95). 4 biến tâm lý – hành vi gần như không tương quan với nhau và với các biến khác (|r| ≤ 0.05 ở nhóm No, ≤ 0.10 ở nhóm Yes).
+- **Tương quan:** trong mỗi nhóm, 5 biến thu nhập và kinh nghiệm tương quan dương với nhau (r từ 0.32 đến 0.95 ở nhóm Working, từ 0.53 đến 0.95 ở nhóm Left), mạnh nhất là `MonthlyIncome` – `JobLevel` (r ≈ 0.95). 4 biến tâm lý – hành vi gần như không tương quan với nhau và với các biến khác (|r| ≤ 0.05 ở nhóm Working, ≤ 0.10 ở nhóm Left).
 - **VIF:** `MonthlyIncome` (VIF = 10.35) và `JobLevel` (10.76) có $R_j^2 \approx 0.90$, tức mỗi biến được giải thích khoảng 90% bởi các biến còn lại, vượt ngưỡng kinh nghiệm 5 và 10: hai biến này có **đa cộng tuyến đáng kể** (mức lương gắn chặt với cấp bậc). 3 biến kinh nghiệm có VIF 2.34–3.07 ($R_j^2$ 0.57–0.67); 4 biến tâm lý – hành vi có VIF ≈ 1. $\det(\mathbf R_{pooled}) = 0.0100$ nhỏ nhưng khác 0, nên $\mathbf W$ vẫn khả nghịch và các thống kê MANOVA tính được. Đề yêu cầu giữ cả hai biến trong vectơ phụ thuộc; ảnh hưởng của cặp biến này được kiểm tra bằng phân tích độ nhạy ở câu (c).
 
 ### Hai nhân tố (4 biến, theo 4 ô)
@@ -366,17 +432,37 @@ par(mfrow = c(1, 1))
 ```{r vif-B}
 E_B <- crossprod(resid(lm(Y ~ Attrition * OverTime, data = ea)))
 R_pooled_B <- cov2cor(E_B)
-knitr::kable(round(R_pooled_B, 3))
+bang(R_pooled_B, caption = "Ma trận tương quan gộp trong ô")
 vif_B <- diag(solve(R_pooled_B))
-knitr::kable(data.frame(bien = bien_tl, VIF = round(vif_B, 2), R2 = round(1 - 1 / vif_B, 3), row.names = NULL))
-det(R_pooled_B)
+bang(data.frame(bien = bien_tl, VIF = vif_B, R2 = 1 - 1 / vif_B), row.names = FALSE,
+     col.names = c("Biến", "VIF", "R²_j = 1 − 1/VIF"), caption = paste0("det(R_pooled) = ", round(det(R_pooled_B), 4)))
 ```
 
 **Nhận xét:** Trong từng ô, tương quan giữa 4 biến tâm lý – hành vi chỉ từ −0.16 đến 0.15; tương quan gộp trong ô từ −0.037 đến 0.022, VIF = 1.00 và $\det(\mathbf R_{pooled}) = 0.996$, nên không có đa cộng tuyến. Mặt khác, vì các biến gần như không tương quan, việc xét đồng thời 4 biến bằng MANOVA mang thêm ít thông tin so với phân tích riêng từng biến.
 
 ## Đồng nhất ma trận hiệp phương sai (Box's M)
 
-Thống kê $C = (1-u)M$ có phân phối xấp xỉ $\chi^2_\nu$ với $\nu = \frac12 p(p+1)(g-1)$ bậc tự do; bác bỏ $H_0$ khi $C > \chi^2_\nu(1-\alpha)$ (Johnson & Wichern, mục 6.6). Theo Johnson & Wichern, xấp xỉ này tốt khi mỗi $n_\ell > 20$ và $p, g \le 5$.
+Thống kê Box's M (Johnson & Wichern, mục 6.6, công thức 6-48 đến 6-52) so sánh ma trận hiệp phương sai của $g$ nhóm (ô):
+
+$$
+\mathbf S_{pooled} = \frac{\sum_{\ell=1}^{g}(n_\ell - 1)\mathbf S_\ell}{\sum_{\ell=1}^{g}(n_\ell - 1)}, \qquad
+M = \Big[\sum_{\ell}(n_\ell - 1)\Big]\ln|\mathbf S_{pooled}| - \sum_{\ell}(n_\ell - 1)\ln|\mathbf S_\ell|,
+$$
+
+$$
+u = \left[\sum_{\ell}\frac{1}{n_\ell - 1} - \frac{1}{\sum_{\ell}(n_\ell - 1)}\right]\frac{2p^2 + 3p - 1}{6(p+1)(g-1)}, \qquad C = (1 - u)M,
+$$
+
+trong đó:
+
+- $g$: số nhóm (2 nhóm Working/Left, hoặc 4 ô); $n_\ell$: số nhân viên của nhóm (ô) $\ell$; $p$: số biến phụ thuộc (9 hoặc 4).
+- $\mathbf S_\ell$: ma trận hiệp phương sai mẫu $p \times p$ của nhóm (ô) $\ell$ (đường chéo là phương sai từng biến, ngoài đường chéo là hiệp phương sai từng cặp biến).
+- $\mathbf S_{pooled}$: ma trận hiệp phương sai gộp, là trung bình có trọng số của các $\mathbf S_\ell$ — ước lượng của $\boldsymbol\Sigma$ chung nếu $H_0$ đúng.
+- $|\mathbf S|$: định thức của ma trận hiệp phương sai, gọi là **phương sai tổng quát**, đo độ phân tán tổng thể của $p$ biến cùng lúc.
+- $M$: so sánh phương sai tổng quát của ma trận gộp với của từng nhóm. Nếu các $\mathbf S_\ell$ gần nhau thì $|\mathbf S_\ell| \approx |\mathbf S_{pooled}|$ và $M$ gần 0; các $\mathbf S_\ell$ càng khác nhau thì $M$ càng lớn.
+- $u$: hệ số hiệu chỉnh của Box để $C$ xấp xỉ tốt phân phối $\chi^2$.
+
+Khi $H_0$ đúng, $C$ có phân phối xấp xỉ $\chi^2_\nu$ với $\nu = \frac12 p(p+1)(g-1)$ bậc tự do (bằng số phần tử khác nhau của một ma trận $p \times p$ đối xứng, nhân với $g - 1$); bác bỏ $H_0$ khi $C > \chi^2_\nu(1-\alpha)$. Theo Johnson & Wichern, xấp xỉ này tốt khi mỗi $n_\ell > 20$ và $p, g \le 5$.
 
 ### Một nhân tố (9 biến, 2 nhóm)
 
@@ -393,8 +479,9 @@ với p = 9, g = 2 nên $\nu = 45$. Vì p = 9 > 5 nên xấp xỉ $\chi^2$ kém 
 
 ```{r box-m-A}
 box_m_A <- box_m(as.data.frame(X), nhom)
-box_m_A
-qchisq(0.95, df = 45)   # phân vị chi2_45(0.95)
+bang(data.frame(C = box_m_A$statistic, df = box_m_A$parameter, phan_vi = qchisq(0.95, df = 45),
+                p = fp(box_m_A$p.value), muc_do = muc_do(box_m_A$p.value)), digits = 2, row.names = FALSE,
+     col.names = c("Thống kê C", "Bậc tự do", "χ²45(0.95)", "p-giá trị", "Mức độ"))
 ```
 
 **Nhận xét:** $C = 174.0 > 61.66 = \chi^2_{45}(0.95)$, p-giá trị = 4.37e-17 < 0.05, nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là ma trận hiệp phương sai của hai nhóm không bằng nhau; p-giá trị < 1e-4 nên đây là **vi phạm nặng**. Do p = 9 > 5 nên xấp xỉ $\chi^2$ kém chính xác, nhưng p-giá trị nhỏ đến mức kết luận không thay đổi. Theo Johnson & Wichern (mục 6.6), Box's M nhạy với dữ liệu không chuẩn, nên một phần kết quả bác bỏ có thể do dữ liệu không chuẩn (đã thấy ở trên).
@@ -414,8 +501,9 @@ với p = 4 và 4 ô nên $\nu = 30$. Các điều kiện xấp xỉ đều th�
 
 ```{r box-m-B}
 box_m_B <- box_m(as.data.frame(Y), o)
-box_m_B
-qchisq(0.95, df = 30)   # phân vị chi2_30(0.95)
+bang(data.frame(C = box_m_B$statistic, df = box_m_B$parameter, phan_vi = qchisq(0.95, df = 30),
+                p = fp(box_m_B$p.value), muc_do = muc_do(box_m_B$p.value)), digits = 2, row.names = FALSE,
+     col.names = c("Thống kê C", "Bậc tự do", "χ²30(0.95)", "p-giá trị", "Mức độ"))
 ```
 
 **Nhận xét:** $C = 54.7 > 43.77 = \chi^2_{30}(0.95)$, p-giá trị = 0.00379 < 0.05, nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là ma trận hiệp phương sai của 4 ô không bằng nhau; p-giá trị > 1e-4 nên đây là vi phạm nhẹ.
@@ -431,6 +519,22 @@ H_A &: \text{có ít nhất hai nhóm (ô) có phương sai khác nhau}
 \end{aligned}
 $$
 
+`rstatix::levene_test()` dùng phiên bản lấy trung vị làm tâm (mặc định `center = median`, còn gọi là kiểm định Brown–Forsythe). Với một biến và $k$ nhóm (ô):
+
+$$
+z_{ij} = |x_{ij} - \tilde x_i|, \qquad
+F = \frac{N - k}{k - 1}\cdot\frac{\sum_{i=1}^{k} n_i(\bar z_i - \bar z)^2}{\sum_{i=1}^{k}\sum_{j=1}^{n_i}(z_{ij} - \bar z_i)^2},
+$$
+
+trong đó:
+
+- $x_{ij}$: giá trị của biến ở nhân viên $j$ trong nhóm $i$; $\tilde x_i$: trung vị của biến trong nhóm $i$.
+- $z_{ij}$: độ lệch tuyệt đối của nhân viên đó so với trung vị nhóm, đo mức "phân tán" của từng quan sát.
+- $\bar z_i$: trung bình độ lệch tuyệt đối trong nhóm $i$ (nhóm có phương sai lớn thì $\bar z_i$ lớn); $\bar z$: trung bình chung của mọi $z_{ij}$.
+- $n_i$: số nhân viên trong nhóm $i$; $N = \sum n_i$; $k = 2$ (Working/Left) hoặc $k = 4$ (4 ô).
+
+$F$ thực chất là thống kê ANOVA một nhân tố áp dụng cho $z_{ij}$: tử số đo khác biệt về mức phân tán trung bình giữa các nhóm, mẫu số đo biến thiên của $z$ trong nhóm. Khi $H_0$ đúng, $F \sim F_{k-1,\,N-k}$; $F$ lớn (p-giá trị nhỏ) nghĩa là phương sai của biến khác nhau giữa các nhóm. Dùng trung vị thay trung bình giúp kiểm định ít nhạy với dữ liệu không chuẩn.
+
 ```{r levene-du-lieu}
 ea_dai <- pivot_longer(ea, cols = all_of(bien), names_to = "bien", values_to = "gia_tri")
 ```
@@ -440,7 +544,9 @@ ea_dai <- pivot_longer(ea, cols = all_of(bien), names_to = "bien", values_to = "
 ```{r levene-A}
 bang_levene_A <- levene_test(group_by(ea_dai, bien), gia_tri ~ Attrition)
 bang_levene_A <- bang_levene_A[match(bien, bang_levene_A$bien), ]
-bang_levene_A
+bang(data.frame(bang_levene_A[, c("bien", "df1", "df2", "statistic")], p = fp(bang_levene_A$p),
+                muc_do = muc_do(bang_levene_A$p)), digits = 2, row.names = FALSE,
+     col.names = c("Biến", "df1", "df2", "Thống kê F", "p-giá trị", "Mức độ"))
 ```
 
 **Nhận xét:** `TotalWorkingYears` (p = 0.0803), `YearsAtCompany` (p = 0.0973) và `JobSatisfaction` (p = 0.0725) có p-giá trị > 0.05 nên ta không bác bỏ $H_0$, nghĩa là chưa có cơ sở cho rằng phương sai của các biến này khác nhau giữa hai nhóm. `MonthlyIncome` (p = 0.000118), `JobLevel` (0.00703), `EnvironmentSatisfaction` (0.000152), `WorkLifeBalance` (0.00054) và `JobInvolvement` (0.000483) có p-giá trị < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%; p-giá trị > 1e-4 nên đây là vi phạm nhẹ. `YearsInCurrentRole` (p = 6.57e-05) bác bỏ $H_0$, và p-giá trị < 1e-4 nên đây là vi phạm nặng.
@@ -450,7 +556,9 @@ bang_levene_A
 ```{r levene-B}
 bang_levene_B <- levene_test(group_by(filter(ea_dai, bien %in% bien_tl), bien), gia_tri ~ Attrition * OverTime)
 bang_levene_B <- bang_levene_B[match(bien_tl, bang_levene_B$bien), ]
-bang_levene_B
+bang(data.frame(bang_levene_B[, c("bien", "df1", "df2", "statistic")], p = fp(bang_levene_B$p),
+                muc_do = muc_do(bang_levene_B$p)), digits = 2, row.names = FALSE,
+     col.names = c("Biến", "df1", "df2", "Thống kê F", "p-giá trị", "Mức độ"))
 ```
 
 **Nhận xét:** `JobSatisfaction` (p = 0.189) không bác bỏ $H_0$. `WorkLifeBalance` (p = 0.00152) và `JobInvolvement` (p = 0.00457) bác bỏ $H_0$ với mức ý nghĩa 5%, vi phạm nhẹ. `EnvironmentSatisfaction` (p = 3.35e-05) bác bỏ $H_0$, vi phạm nặng.
@@ -482,7 +590,8 @@ bang_vi_pham$p_value <- fp(bang_vi_pham$p_value)
 ### Một nhân tố (9 biến)
 
 ```{r vi-pham-A}
-knitr::kable(bang_vi_pham[bang_vi_pham$mo_hinh == "Một nhân tố (9 biến)", -1], row.names = FALSE)
+bang(bang_vi_pham[bang_vi_pham$mo_hinh == "Một nhân tố (9 biến)", -1], row.names = FALSE,
+     col.names = c("Loại giả định", "Giả định", "p-giá trị", "Mức độ"))
 ```
 
 **Nhận xét:** Cả giả định p chiều (chuẩn nhiều chiều ở hai nhóm, Box's M) và giả định từng biến (chuẩn, Levene) đều **vi phạm nặng**; cỡ mẫu hai nhóm không cân bằng (1233 và 237); có đa cộng tuyến giữa `MonthlyIncome` và `JobLevel`.
@@ -490,7 +599,8 @@ knitr::kable(bang_vi_pham[bang_vi_pham$mo_hinh == "Một nhân tố (9 biến)",
 ### Hai nhân tố (4 biến)
 
 ```{r vi-pham-B}
-knitr::kable(bang_vi_pham[bang_vi_pham$mo_hinh == "Hai nhân tố (4 biến)", -1], row.names = FALSE)
+bang(bang_vi_pham[bang_vi_pham$mo_hinh == "Hai nhân tố (4 biến)", -1], row.names = FALSE,
+     col.names = c("Loại giả định", "Giả định", "p-giá trị", "Mức độ"))
 ```
 
 **Nhận xét:** Giả định p chiều chỉ vi phạm nhẹ (chuẩn nhiều chiều ở 3/4 ô, Box's M), nhưng giả định từng biến vi phạm nặng (chuẩn ở mọi biến, Levene ở `EnvironmentSatisfaction`); cỡ mẫu 4 ô không cân bằng (từ 110 đến 944).

@@ -1,22 +1,78 @@
 ---
-title: "Câu e – Diễn giải ý nghĩa thực tiễn"
-output: html_document
+title: "Câu e – Nhận xét và ý nghĩa thực tiễn"
+author: "Vũ Hà Thư - 25C23004"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    df_print: kable
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
+here::i_am("notebooks/cau_e.Rmd")   # xác định thư mục gốc project khi chạy riêng notebook
+source(here::here("R", "setup.R"))
+source(here::here("R", "du_lieu.R"))   # ea, X, nhom, nhom_nhan, bien, ... (xem câu a)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = "center")
 ```
 
-## Mục tiêu
+## Hồ sơ hai nhóm nhân viên
 
-Diễn giải ý nghĩa thực tiễn.
+Bảng dưới tóm tắt khác biệt giữa nhân viên đang làm việc (Working) và đã nghỉ việc (Left) từ các câu (c)–(d): trung bình mỗi nhóm, chênh lệch chuẩn hóa $d = (\bar x_{Left} - \bar x_{Working})/s_{gộp}$ (câu b) và độ lớn ảnh hưởng $\omega^2$ (câu d).
 
-## Phân tích
-
-```{r}
-# bổ sung code r tại đây
+```{r ho-so}
+khoi_cua_bien <- c(rep("Thu nhập – nghề nghiệp", 2), rep("Kinh nghiệm", 3), rep("Tâm lý – hành vi", 4))
+ho_so <- do.call(rbind, lapply(bien, function(v) {
+  y <- ea[[v]]; y1 <- y[nhom == "No"]; y2 <- y[nhom == "Yes"]
+  s_gop <- sqrt(((n1 - 1) * var(y1) + (n2 - 1) * var(y2)) / (n - 2))
+  a <- anova(lm(y ~ nhom)); ss <- a$`Sum Sq`; ms <- a$`Mean Sq`
+  data.frame(bien = v, tb_Working = mean(y1), tb_Left = mean(y2),
+             chenh_pct = (mean(y2) - mean(y1)) / mean(y1) * 100,
+             d = (mean(y2) - mean(y1)) / s_gop,
+             omega2 = (ss[1] - a$Df[1] * ms[2]) / (sum(ss) + ms[2]))
+}))
+bang(cbind(khoi = khoi_cua_bien, ho_so), digits = 3, row.names = FALSE,
+     col.names = c("Khối", "Biến", "Working", "Left", "Chênh lệch (%)", "d", "ω²")) |>
+  them_tieu_de(header = c(" " = 2, "Trung bình" = 2, " " = 3)) |>
+  gop_dong(cot = 1)
 ```
 
-## Kết quả và nhận xét
+Để đọc khác biệt theo góc nhìn quản trị, bảng dưới cho **tỷ lệ nghỉ việc** (%) theo các mức của những biến khác biệt rõ nhất. Tỷ lệ nghỉ việc chung của công ty là `r round(mean(nhom == "Yes") * 100, 1)`%.
 
-Viết kết quả kiểm định, cách diễn giải và kết luận tại đây.
+```{r ty-le-nghi-viec}
+ty_le_nghi <- function(x) round(tapply(nhom == "Yes", x, mean) * 100, 1)
+nhom_tham_nien <- cut(ea$YearsAtCompany, c(-1, 2, 5, 10, 40), labels = c("0–2 năm", "3–5 năm", "6–10 năm", "> 10 năm"))
+
+bang(data.frame(JobLevel = names(ty_le_nghi(ea$JobLevel)), so_nv = as.vector(table(ea$JobLevel)),
+                ty_le = ty_le_nghi(ea$JobLevel)), row.names = FALSE,
+     col.names = c("Cấp bậc", "Số nhân viên", "Tỷ lệ nghỉ việc (%)"))
+
+bang(data.frame(tham_nien = levels(nhom_tham_nien), so_nv = as.vector(table(nhom_tham_nien)),
+                ty_le = ty_le_nghi(nhom_tham_nien)), row.names = FALSE,
+     col.names = c("Số năm tại công ty", "Số nhân viên", "Tỷ lệ nghỉ việc (%)"))
+
+tl_tam_ly <- t(sapply(bien_tl, function(v) ty_le_nghi(ea[[v]])))
+bang(tl_tam_ly, col.names = c("Mức 1", "Mức 2", "Mức 3", "Mức 4"),
+     caption = "Tỷ lệ nghỉ việc (%) theo mức của 4 biến tâm lý – hành vi (1 = thấp nhất)")
+```
+
+## Nhận xét về khác biệt giữa hai nhóm
+
+**1. Nhân viên nghỉ việc là nhóm thu nhập và cấp bậc thấp.** Thu nhập trung bình của nhóm Left thấp hơn khoảng 30% so với nhóm Working (4787 so với 6833), cấp bậc trung bình thấp hơn 0.51 bậc. 60.3% nhân viên nghỉ việc ở cấp bậc 1; tỷ lệ nghỉ việc ở cấp 1 là 26.3%, cao gần gấp đôi tỷ lệ chung (16.1%), trong khi ở cấp 4–5 chỉ 4.7–7.2%.
+
+**2. Nhân viên nghỉ việc ít kinh nghiệm và mới vào công ty.** Nhóm Left có tổng số năm làm việc ít hơn 3.6 năm, số năm tại công ty ít hơn 2.2 năm (trung vị 3 năm so với 6 năm) và số năm ở vị trí hiện tại ít hơn 1.6 năm. Tỷ lệ nghỉ việc giảm dần theo thâm niên: 29.8% ở nhóm 0–2 năm tại công ty, 13.8% ở nhóm 3–5 năm, 12.3% ở nhóm 6–10 năm và 8.1% ở nhóm trên 10 năm. Đây là hai khối có độ lớn ảnh hưởng lớn nhất ($\omega^2$ từ 0.017 đến 0.029; $d$ từ −0.37 đến −0.47).
+
+**3. Nhân viên nghỉ việc kém hài lòng và ít gắn kết hơn.** Cả 4 biến tâm lý – hành vi của nhóm Left đều thấp hơn, rõ nhất ở hài lòng công việc, hài lòng môi trường (thấp hơn khoảng 0.31 điểm trên thang 1–4) và mức độ tham gia công việc (0.25 điểm). Khác biệt thể hiện rõ ở mức thấp nhất của thang đo: tỷ lệ nghỉ việc của nhân viên chọn mức 1 là 22.8% (hài lòng công việc), 25.4% (hài lòng môi trường), 31.2% (cân bằng công việc – cuộc sống) và 33.7% (tham gia công việc), cao hơn tỷ lệ chung 16.1%. Cân bằng công việc – cuộc sống có khác biệt trung bình nhỏ nhất ($d = -0.17$), nhưng tỷ lệ nghỉ việc ở mức 1 lại cao; khác biệt này tập trung ở một nhóm nhỏ nhân viên (4.5–10.5% chọn mức 1) chứ không dịch chuyển cả phân phối. Biến này liên quan đến làm thêm giờ, được phân tích tiếp ở câu (f).
+
+**4. Mỗi biến riêng lẻ chỉ phân biệt hai nhóm ở mức nhỏ.** Các khác biệt đều có ý nghĩa thống kê, nhưng $\omega^2 < 0.03$ cho mọi biến và Pillai của cả 9 biến chỉ 0.084 (câu c): phân phối của hai nhóm chồng lấn nhiều. Khả năng nghỉ việc gắn với một **tổ hợp** đặc điểm (cấp thấp, mới vào, kém hài lòng) hơn là với một chỉ số đơn lẻ.
+
+## Ý nghĩa thực tiễn đối với quản trị nhân sự
+
+1. **Ưu tiên nhóm nhân viên cấp thấp, thu nhập thấp.** Rà soát mức lương của cấp bậc 1 so với thị trường, xây dựng lộ trình thăng tiến rõ ràng từ cấp 1 lên cấp 2 (tỷ lệ nghỉ việc giảm từ 26.3% xuống 9.7% giữa hai cấp này).
+2. **Giữ chân nhân viên trong những năm đầu.** Gần 30% nhân viên có thâm niên 0–2 năm đã nghỉ việc; chương trình hội nhập (onboarding), người hướng dẫn (mentoring) và đánh giá định kỳ trong 2 năm đầu là giai đoạn có tác động lớn nhất.
+3. **Theo dõi mức độ hài lòng và gắn kết.** Khảo sát định kỳ hài lòng công việc, môi trường làm việc, cân bằng công việc – cuộc sống và mức độ tham gia; nhân viên chọn mức thấp nhất ở bất kỳ thang nào là nhóm có tỷ lệ nghỉ việc cao (22.8–33.7%), cần được quản lý trực tiếp trao đổi và có biện pháp hỗ trợ sớm.
+4. **Kết hợp nhiều chỉ số thay vì một chỉ số.** Vì mỗi biến chỉ khác biệt nhỏ giữa hai nhóm, hệ thống cảnh báo sớm nên kết hợp cấp bậc, thâm niên, thu nhập và các chỉ số hài lòng. Việc dự báo trực tiếp nhân viên nào có khả năng nghỉ việc cần mô hình phân loại (ví dụ hồi quy logistic với `Attrition` là biến phụ thuộc), thảo luận ở câu (g).
+
+**Giới hạn của các nhận xét trên.** Dữ liệu là dữ liệu cắt ngang và MANOVA chỉ cho biết hai nhóm khác nhau về trung bình, không chứng minh quan hệ nhân quả: thu nhập thấp có thể đi cùng nghỉ việc vì nhân viên nghỉ việc thường là người mới vào, cấp thấp. Các biến thu nhập, cấp bậc và thâm niên tương quan mạnh với nhau (câu b), nên ảnh hưởng riêng của từng biến lên quyết định nghỉ việc chưa tách được ở đây.
