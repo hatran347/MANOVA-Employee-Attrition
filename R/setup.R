@@ -39,15 +39,17 @@ if (!requireNamespace("kableExtra", quietly = TRUE)) {
 }
 co_kableExtra <- requireNamespace("kableExtra", quietly = TRUE)
 
-bang <- function(x, ..., digits = 3, caption = NULL) {
+bang <- function(x, ..., digits = 3, caption = NULL, soc = TRUE) {
   k <- knitr::kable(x, digits = digits, caption = caption, booktabs = TRUE, ...)
   if (!co_kableExtra) return(k)
-  kableExtra::kable_styling(k, bootstrap_options = c("striped", "hover", "condensed"),
+  kableExtra::kable_styling(k, bootstrap_options = c(if (soc) "striped", "hover", "condensed"),
                             full_width = FALSE, position = "center",
-                            latex_options = c("hold_position", "scale_down", "striped"))
+                            latex_options = c("hold_position", "scale_down", if (soc) "striped"))
 }
 
 # Cac ham dinh dang bo sung cua kableExtra; bo qua neu chua co goi
 them_tieu_de <- function(k, header) if (co_kableExtra) kableExtra::add_header_above(k, header) else k
 gop_dong     <- function(k, cot)    if (co_kableExtra) kableExtra::collapse_rows(k, columns = cot, valign = "middle") else k
 cuon         <- function(k, cao)    if (co_kableExtra) kableExtra::scroll_box(k, width = "100%", height = cao) else k
+to_xam       <- function(k, dong)   if (co_kableExtra) kableExtra::row_spec(k, dong, background = "#e6e6e6") else k
+khong_ngat  <- function(k, cot)    if (co_kableExtra) kableExtra::column_spec(k, cot, extra_css = "white-space: nowrap;") else k

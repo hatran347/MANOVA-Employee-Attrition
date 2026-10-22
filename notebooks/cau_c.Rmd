@@ -1,5 +1,5 @@
 ---
-title: "Câu c – Kiểm định MANOVA một nhân tố"
+title: "Kiểm định MANOVA một nhân tố"
 author: "Vũ Hà Thư - 25C23004"
 output:
   html_document:
@@ -14,7 +14,7 @@ options(repos = c(CRAN = "https://cloud.r-project.org"))
 if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
 here::i_am("notebooks/cau_c.Rmd")   # xác định thư mục gốc project khi chạy riêng notebook
 source(here::here("R", "setup.R"))
-source(here::here("R", "du_lieu.R"))   # ea, X, X1, X2, Y, nhom, o, ... (xem câu a)
+source(here::here("R", "du_lieu.R"))   # ea, X, X1, X2, Y, nhom, o, ... (xem mục 2)
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = "center")
 ```
 
@@ -28,6 +28,8 @@ H_0 &: \boldsymbol\tau_1 = \boldsymbol\tau_2 = \mathbf 0 \quad (\boldsymbol\mu_1
 H_A &: \text{tồn tại } \boldsymbol\tau_\ell \neq \mathbf 0 \quad (\boldsymbol\mu_1 \neq \boldsymbol\mu_2)
 \end{aligned}
 $$
+
+Các mục từ Wilks đến kiểm tra tính vững được tính cho **kịch bản 1** (9 biến, đúng vectơ biến của đề); **kịch bản 2** (bỏ `MonthlyIncome`, 8 biến, xem mục 3) được chạy lại toàn bộ ở mục cuối.
 
 ## Thống kê Wilks lambda
 
@@ -93,7 +95,7 @@ bang(data.frame(
 ), digits = 4, row.names = FALSE, col.names = c("Thống kê", "Giá trị", "Phân vị so sánh", "p-giá trị"))
 ```
 
-**Nhận xét:** $\Lambda^* = 0.9157$.
+$\Lambda^* = 0.9157$.
 
 - Xấp xỉ Bartlett: $-\left(n-1-\frac{p+g}{2}\right)\ln\Lambda^* = 128.87 > 16.92 = \chi^2_9(0.95)$, p-giá trị = 2.03e-23.
 - Phân phối chính xác: $F = 14.93 > 1.886 = F_{9,\,1460}(0.95)$, p-giá trị = 2.03e-23 (tương ứng Hotelling $T^2 = 135.12$).
@@ -121,11 +123,11 @@ bang(data.frame(hieu_ung = "Attrition", Pillai = kq_pillai[1, "Pillai"], F = kq_
      digits = 4, row.names = FALSE, col.names = c("Hiệu ứng", "Pillai V", "F", "df1", "df2", "p-giá trị"))
 ```
 
-**Nhận xét:** Pillai = 0.0843, F(9, 1460) = 14.93, p-giá trị = 2.03e-23 < 0.05, nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình của hai nhóm khác nhau. Với $g = 2$, Pillai $= 1 - \Lambda^* = 0.0843$ và hai thống kê cho cùng giá trị F và cùng kết luận.
+Pillai = 0.0843, F(9, 1460) = 14.93, p-giá trị = 2.03e-23 < 0.05, nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình của hai nhóm khác nhau. Với $g = 2$, Pillai $= 1 - \Lambda^* = 0.0843$ và hai thống kê cho cùng giá trị F và cùng kết luận.
 
 ## Kiểm tra tính vững của MANOVA theo loại vi phạm
 
-Các kiểm định dưới đây kiểm tra lại kết luận MANOVA ở trên, với cùng cặp giả thuyết $H_0: \boldsymbol\tau_1 = \boldsymbol\tau_2 = \mathbf 0$ đối với $H_A$: tồn tại $\boldsymbol\tau_\ell \neq \mathbf 0$. Mục 1–2 dùng hoán vị nên không cần giả định chuẩn nhiều chiều, nhưng vẫn giả định các nhóm có cùng độ phân tán; mục 3 (bootstrap trong từng nhóm) cho phép ma trận hiệp phương sai của hai nhóm khác nhau.
+Các kiểm định dưới đây kiểm tra lại kết luận MANOVA ở trên, với cùng cặp giả thuyết $H_0: \boldsymbol\tau_1 = \boldsymbol\tau_2 = \mathbf 0$ đối với $H_A$: tồn tại $\boldsymbol\tau_\ell \neq \mathbf 0$. Kiểm định hoán vị và PERMANOVA dùng hoán vị nên không cần giả định chuẩn nhiều chiều, nhưng vẫn giả định các nhóm có cùng độ phân tán; bootstrap trong từng nhóm cho phép ma trận hiệp phương sai của hai nhóm khác nhau.
 
 Các phương pháp mô phỏng dùng chung cách tính p-giá trị: lặp $B = 999$ lần, mỗi lần $b$ tạo một bộ dữ liệu giả lập phù hợp với $H_0$ và tính lại thống kê $V^*_b$; so với thống kê quan sát $V_{qs}$ trên dữ liệu thật,
 
@@ -152,7 +154,7 @@ bang(data.frame(pillai_qs, max(pillai_hv), (sum(pillai_hv >= pillai_qs) + 1) / (
      digits = 4, col.names = c("Pillai quan sát", "Pillai hoán vị lớn nhất", "p-giá trị hoán vị"))
 ```
 
-**Nhận xét:** Pillai quan sát = 0.0843, lớn hơn mọi giá trị trong 999 lần hoán vị (lớn nhất 0.0199). p-giá trị hoán vị = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình của hai nhóm khác nhau.
+Pillai quan sát = 0.0843, lớn hơn mọi giá trị trong 999 lần hoán vị (lớn nhất 0.0199). p-giá trị hoán vị = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình của hai nhóm khác nhau.
 
 ### 2. PERMANOVA và kiểm tra độ phân tán (betadisper)
 
@@ -168,9 +170,9 @@ $$
 F = \frac{SS_A/(g-1)}{SS_W/(N-g)}, \qquad R^2 = \frac{SS_A}{SS_T},
 $$
 
-trong đó $SS_T$ là tổng biến thiên (dựa trên khoảng cách giữa mọi cặp nhân viên), $SS_W$ là biến thiên trong nhóm (chỉ dùng các cặp cùng nhóm), $SS_A$ là phần biến thiên do khác biệt giữa nhóm. Với khoảng cách Euclid, $SS_A$ và $SS_W$ bằng tổng (qua 9 biến chuẩn hóa) các tổng bình phương giữa nhóm và trong nhóm, tức $SS_A = \text{tr}(\mathbf B)$, $SS_W = \text{tr}(\mathbf W)$ tính trên dữ liệu chuẩn hóa; $R^2$ là tỷ lệ biến thiên được giải thích bởi `Attrition`. Khác với MANOVA, PERMANOVA chỉ dùng đường chéo của $\mathbf B$, $\mathbf W$ (không dùng hiệp phương sai giữa các biến). p-giá trị lấy theo hoán vị nhãn nhóm như mục 1, nên không cần giả định chuẩn.
+trong đó $SS_T$ là tổng biến thiên (dựa trên khoảng cách giữa mọi cặp nhân viên), $SS_W$ là biến thiên trong nhóm (chỉ dùng các cặp cùng nhóm), $SS_A$ là phần biến thiên do khác biệt giữa nhóm. Với khoảng cách Euclid, $SS_A$ và $SS_W$ bằng tổng (qua 9 biến chuẩn hóa) các tổng bình phương giữa nhóm và trong nhóm, tức $SS_A = \text{tr}(\mathbf B)$, $SS_W = \text{tr}(\mathbf W)$ tính trên dữ liệu chuẩn hóa; $R^2$ là tỷ lệ biến thiên được giải thích bởi `Attrition`. Khác với MANOVA, PERMANOVA chỉ dùng đường chéo của $\mathbf B$, $\mathbf W$ (không dùng hiệp phương sai giữa các biến). p-giá trị lấy theo hoán vị nhãn nhóm như kiểm định hoán vị ở trên, nên không cần giả định chuẩn.
 
-PERMANOVA giả định độ phân tán nhiều chiều của các nhóm bằng nhau, nên được kiểm tra kèm bằng **betadisper** (Anderson, 2006, *Biometrics* 62): tính khoảng cách $z_{\ell j}$ từ mỗi nhân viên đến trọng tâm nhóm của mình, rồi so sánh trung bình $z$ giữa hai nhóm bằng ANOVA (cùng ý tưởng với Levene ở câu b, nhưng cho cả 9 biến cùng lúc). Kiểm định giả thuyết
+PERMANOVA giả định độ phân tán nhiều chiều của các nhóm bằng nhau, nên được kiểm tra kèm bằng **betadisper** (Anderson, 2006, *Biometrics* 62): tính khoảng cách $z_{\ell j}$ từ mỗi nhân viên đến trọng tâm nhóm của mình, rồi so sánh trung bình $z$ giữa hai nhóm bằng ANOVA (cùng ý tưởng với Levene ở mục 3, nhưng cho cả 9 biến cùng lúc). Kiểm định giả thuyết
 
 $$
 \begin{aligned}
@@ -187,7 +189,11 @@ kq_permanova$`Pr(>F)` <- ifelse(is.na(kq_permanova$`Pr(>F)`), "", fp(kq_permanov
 options(knitr.kable.NA = "")
 bang(kq_permanova, digits = 3, caption = "PERMANOVA",
      col.names = c("Bậc tự do", "Tổng bình phương", "R²", "F", "p-giá trị"))
+```
 
+PERMANOVA: F = 28.2, R² = 0.019, p-giá trị = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vị trí (trọng tâm) nhiều chiều của hai nhóm khác nhau. `Attrition` chỉ giải thích 1.9% tổng biến thiên của 9 biến đã chuẩn hóa.
+
+```{r betadisper}
 kq_betadisper <- as.data.frame(anova(betadisper(dist(scale(X)), nhom_nhan)))
 rownames(kq_betadisper) <- c("Nhóm", "Phần dư")
 kq_betadisper$`Pr(>F)` <- ifelse(is.na(kq_betadisper$`Pr(>F)`), "", fp(kq_betadisper$`Pr(>F)`))
@@ -195,10 +201,7 @@ bang(kq_betadisper, digits = 3, caption = "betadisper",
      col.names = c("Bậc tự do", "Tổng bình phương", "Trung bình bình phương", "F", "p-giá trị"))
 ```
 
-**Nhận xét:** 
-
-- PERMANOVA: F = 28.2, R² = 0.019, p-giá trị = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vị trí (trọng tâm) nhiều chiều của hai nhóm khác nhau. `Attrition` chỉ giải thích 1.9% tổng biến thiên của 9 biến đã chuẩn hóa.
-- betadisper: F = 1.15, p-giá trị = 0.283 > 0.05 nên ta không bác bỏ $H_0$, nghĩa là chưa có cơ sở cho rằng độ phân tán của hai nhóm khác nhau; vì vậy kết quả PERMANOVA phản ánh khác biệt về vị trí, không bị lẫn với khác biệt về độ phân tán.
+betadisper: F = 1.15, p-giá trị = 0.283 > 0.05 nên ta không bác bỏ $H_0$, nghĩa là chưa có cơ sở cho rằng độ phân tán của hai nhóm khác nhau; vì vậy kết quả PERMANOVA phản ánh khác biệt về vị trí, không bị lẫn với khác biệt về độ phân tán.
 
 ### 3. Bootstrap trong từng nhóm (cho phép ma trận hiệp phương sai khác nhau)
 
@@ -232,17 +235,17 @@ bang(data.frame(pillai_qs, max(pillai_bs), (sum(pillai_bs >= pillai_qs) + 1) / (
      digits = 4, col.names = c("Pillai quan sát", "Pillai bootstrap lớn nhất", "p-giá trị bootstrap"))
 ```
 
-**Nhận xét:** Dưới $H_0$, Pillai bootstrap lớn nhất là 0.0246, nhỏ hơn nhiều so với Pillai quan sát 0.0843. p-giá trị bootstrap = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình của hai nhóm khác nhau, kể cả khi cho phép ma trận hiệp phương sai của hai nhóm khác nhau.
+Dưới $H_0$, Pillai bootstrap lớn nhất là 0.0246, nhỏ hơn nhiều so với Pillai quan sát 0.0843. p-giá trị bootstrap = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình của hai nhóm khác nhau, kể cả khi cho phép ma trận hiệp phương sai của hai nhóm khác nhau.
 
 ### 4. MANOVA trên hạng (vi phạm chuẩn từng biến)
 
-Giả định chuẩn từng biến vi phạm nặng (câu b) và 5/9 biến là biến thứ bậc chỉ có 4–5 mức, nên phép biến đổi (ví dụ log) không làm các biến này có phân phối chuẩn. Vì vậy, theo hướng xử lý ở câu (b), MANOVA được thực hiện lại trên **hạng** của từng biến (biến đổi hạng của Conover & Iman, 1981, *The American Statistician* 35(3)):
+Giả định chuẩn từng biến vi phạm nặng (mục 3) và 5/9 biến là biến thứ bậc chỉ có 4–5 mức, nên phép biến đổi (ví dụ log) không làm các biến này có phân phối chuẩn. Vì vậy, theo hướng xử lý ở mục 3, MANOVA được thực hiện lại trên **hạng** của từng biến (biến đổi hạng của Conover & Iman, 1981, *The American Statistician* 35(3)):
 
 $$
 x_{jk} \;\longrightarrow\; R_{jk} = \text{hạng của } x_{jk} \text{ trong } \{x_{1k}, \dots, x_{nk}\},
 $$
 
-tức mỗi giá trị của biến $k$ (ví dụ `MonthlyIncome`) được thay bằng thứ hạng của nó khi xếp 1470 nhân viên từ nhỏ đến lớn (các giá trị bằng nhau nhận hạng trung bình). Hạng chỉ giữ thứ tự, không phụ thuộc khoảng cách giữa các giá trị, nên không bị ảnh hưởng bởi lệch phải hay giá trị cực trị. Sau đó tính Pillai trên ma trận hạng; p-giá trị lấy theo hoán vị nhãn `Attrition` (B = 999) như mục 1, để không phụ thuộc giả định chuẩn.
+tức mỗi giá trị của biến $k$ (ví dụ `MonthlyIncome`) được thay bằng thứ hạng của nó khi xếp 1470 nhân viên từ nhỏ đến lớn (các giá trị bằng nhau nhận hạng trung bình). Hạng chỉ giữ thứ tự, không phụ thuộc khoảng cách giữa các giá trị, nên không bị ảnh hưởng bởi lệch phải hay giá trị cực trị. Sau đó tính Pillai trên ma trận hạng; p-giá trị lấy theo hoán vị nhãn `Attrition` (B = 999) như kiểm định hoán vị ở trên, để không phụ thuộc giả định chuẩn.
 
 ```{r manova-hang}
 X_hang <- apply(X, 2, rank)   # hạng của từng biến trong toàn bộ mẫu
@@ -258,34 +261,84 @@ bang(data.frame(pillai_hang_qs, max(pillai_hang_hv), (sum(pillai_hang_hv >= pill
      digits = 4, col.names = c("Pillai trên hạng", "Pillai hoán vị lớn nhất", "p-giá trị hoán vị"))
 ```
 
-**Nhận xét:** Pillai trên hạng = 0.0923, lớn hơn mọi giá trị trong 999 lần hoán vị (lớn nhất 0.0209). p-giá trị = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là hai nhóm khác nhau về vị trí nhiều chiều khi không dùng giả định chuẩn.
+Pillai trên hạng = 0.0923, lớn hơn mọi giá trị trong 999 lần hoán vị (lớn nhất 0.0209). p-giá trị = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là hai nhóm khác nhau về vị trí nhiều chiều khi không dùng giả định chuẩn.
 
-### 5. Độ nhạy theo đa cộng tuyến (bỏ JobLevel)
+## Kịch bản 2: bỏ MonthlyIncome (8 biến)
 
-Câu (b) cho thấy `MonthlyIncome` và `JobLevel` có VIF khoảng 10 ($R_j^2 \approx 0.90$): khi hai biến gần như tỷ lệ với nhau, $\mathbf W$ gần suy biến và $|\mathbf W|$ nhỏ, có thể làm các thống kê dựa trên $\mathbf W^{-1}$ kém ổn định. MANOVA được chạy lại với $p = 8$ biến, bỏ `JobLevel` (giữ `MonthlyIncome` vì là biến định lượng liên tục), để kiểm tra kết luận có phụ thuộc vào cặp biến này không.
+Mục 3 cho thấy `MonthlyIncome` và `JobLevel` có VIF khoảng 10 ($R_j^2 \approx 0.90$): khi hai biến gần như tỷ lệ với nhau, $\mathbf W$ gần suy biến và $|\mathbf W|$ nhỏ, có thể làm các thống kê dựa trên $\mathbf W^{-1}$ kém ổn định. Kịch bản 2 bỏ `MonthlyIncome`, giữ `JobLevel` (thang thứ bậc, diễn giải theo số bậc), với $p = 8$. Mọi thống kê ở trên đều tính trên cả vectơ biến nên đều thay đổi khi bỏ một biến; vì vậy toàn bộ các kiểm định được chạy lại cho 8 biến, với cùng cặp giả thuyết, cùng công thức và cùng $B = 999$ lần lặp (Bartlett so với $\chi^2_8(0.95) = 15.51$, F chính xác với bậc tự do $(8, 1461)$).
 
-```{r do-nhay}
-kq_do_nhay <- summary(manova(X[, setdiff(bien, "JobLevel")] ~ nhom), test = "Pillai")$stats
-bang(data.frame(hieu_ung = "Attrition (8 biến, bỏ JobLevel)", Pillai = kq_do_nhay[1, "Pillai"],
-                F = kq_do_nhay[1, "approx F"], df1 = kq_do_nhay[1, "num Df"], df2 = kq_do_nhay[1, "den Df"],
-                p = fp(kq_do_nhay[1, "Pr(>F)"])),
-     digits = 4, row.names = FALSE, col.names = c("Hiệu ứng", "Pillai V", "F", "df1", "df2", "p-giá trị"))
+```{r kich-ban-2}
+M <- X_kb2; p2 <- ncol(M)
+# Wilks: B, W, Bartlett, F chính xác
+W2 <- (n1 - 1) * cov(M[nhom == "No", ]) + (n2 - 1) * cov(M[nhom == "Yes", ])
+B2 <- n1 * tcrossprod(colMeans(M[nhom == "No", ]) - colMeans(M)) +
+      n2 * tcrossprod(colMeans(M[nhom == "Yes", ]) - colMeans(M))
+lambda2 <- det(W2) / det(B2 + W2)
+bartlett2 <- -(n - 1 - (p2 + g) / 2) * log(lambda2)
+F2 <- (n - p2 - 1) / p2 * (1 - lambda2) / lambda2
+pillai_hai <- function(A, f) summary(manova(A ~ f), test = "Pillai")$stats[1, "Pillai"]
+pillai2 <- pillai_hai(M, nhom)
+p_mo_phong <- function(v, qs) (sum(v >= qs) + 1) / (B_lan + 1)
+
+# Hoán vị Pillai
+set.seed(2026)
+hv2 <- replicate(B_lan, pillai_hai(M, sample(nhom)))
+# PERMANOVA và betadisper
+set.seed(2026)
+perm2 <- adonis2(scale(M) ~ Attrition, data = ea, method = "euclidean", permutations = 999)
+beta2 <- anova(betadisper(dist(scale(M)), nhom_nhan))
+# Bootstrap trong từng nhóm
+E2 <- M
+for (l in levels(nhom)) { i <- which(nhom == l); E2[i, ] <- sweep(M[i, ], 2, colMeans(M[i, ])) }
+set.seed(2026)
+bs2 <- replicate(B_lan, {
+  Eb <- E2
+  for (l in levels(nhom)) { i <- which(nhom == l); Eb[i, ] <- E2[sample(i, length(i), replace = TRUE), ] }
+  pillai_hai(Eb, nhom)
+})
+# MANOVA trên hạng
+M_hang <- apply(M, 2, rank)
+pillai_hang2 <- pillai_hai(M_hang, nhom)
+set.seed(2026)
+hang2 <- replicate(B_lan, pillai_hai(M_hang, sample(nhom)))
+
+kq_kb2 <- data.frame(
+  phuong_phap = c("Wilks + xấp xỉ Bartlett", "Wilks, F chính xác", "Pillai", "Hoán vị Pillai",
+                  "PERMANOVA", "betadisper (độ phân tán)", "Bootstrap trong từng nhóm", "MANOVA trên hạng"),
+  thong_ke = c(sprintf("Λ* = %.4f; %.2f", lambda2, bartlett2), sprintf("F(8, 1461) = %.2f", F2),
+               sprintf("Pillai = %.4f", pillai2), sprintf("Pillai = %.4f (hoán vị lớn nhất %.4f)", pillai2, max(hv2)),
+               sprintf("F = %.1f; R² = %.3f", perm2$F[1], perm2$R2[1]), sprintf("F = %.2f", beta2$`F value`[1]),
+               sprintf("Pillai = %.4f (bootstrap lớn nhất %.4f)", pillai2, max(bs2)),
+               sprintf("Pillai = %.4f (hoán vị lớn nhất %.4f)", pillai_hang2, max(hang2))),
+  p = c(pchisq(bartlett2, p2, lower.tail = FALSE), pf(F2, p2, n - p2 - 1, lower.tail = FALSE),
+        pf(F2, p2, n - p2 - 1, lower.tail = FALSE), p_mo_phong(hv2, pillai2), perm2$`Pr(>F)`[1],
+        beta2$`Pr(>F)`[1], p_mo_phong(bs2, pillai2), p_mo_phong(hang2, pillai_hang2)))
+kq_kb2$ket_luan <- ifelse(kq_kb2$p < 0.05, "Bác bỏ H0", "Không bác bỏ H0")
+kq_kb2$p <- fp(kq_kb2$p)
+bang(kq_kb2, row.names = FALSE, col.names = c("Phương pháp", "Thống kê", "p-giá trị", "Kết luận (5%)"),
+     caption = "Kịch bản 2: các kiểm định trên 8 biến")
 ```
 
-**Nhận xét:** Khi bỏ `JobLevel`, Pillai = 0.0837, F(8, 1461) = 16.67, p-giá trị = 7.69e-24 < 0.05, nên ta vẫn bác bỏ $H_0$ với mức ý nghĩa 5%. Pillai gần như không đổi (0.0843 so với 0.0837), nên đa cộng tuyến giữa `MonthlyIncome` và `JobLevel` không ảnh hưởng đến kết luận.
+- **Wilks và Pillai:** $\Lambda^* = 0.9157$, thống kê Bartlett 128.91 > 15.51 = $\chi^2_8(0.95)$, F(8, 1461) = 16.81, p-giá trị = 4.77e-24 < 0.05, nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình 8 biến của hai nhóm khác nhau. Pillai = 0.0843, bằng kịch bản 1 đến chữ số thứ tư (0.08429 ở cả hai kịch bản): khi đã có `JobLevel`, `MonthlyIncome` hầu như không mang thêm thông tin phân biệt hai nhóm.
+- **Hoán vị, bootstrap, MANOVA trên hạng:** Pillai quan sát lớn hơn mọi giá trị mô phỏng dưới $H_0$ (lớn nhất 0.0177, 0.0241 và 0.0158), p-giá trị = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5% ở cả ba phương pháp.
+- **PERMANOVA:** F = 26.9, R² = 0.018, p-giá trị = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%; `Attrition` giải thích 1.8% tổng biến thiên của 8 biến chuẩn hóa (1.9% ở kịch bản 1).
+- **betadisper:** F = 0.06, p-giá trị = 0.812 > 0.05 nên ta không bác bỏ $H_0$, nghĩa là chưa có cơ sở cho rằng độ phân tán của hai nhóm khác nhau; kết quả PERMANOVA phản ánh khác biệt về vị trí.
 
-## Tổng hợp câu (c)
+Kết luận của kịch bản 2 trùng với kịch bản 1 ở mọi phương pháp, nên đa cộng tuyến giữa `MonthlyIncome` và `JobLevel` không ảnh hưởng đến kết luận MANOVA.
+
+## Tổng hợp
 
 
-| Phương pháp | Vi phạm được xử lý | Thống kê | p-giá trị | Kết luận (α = 5%) |
-|---|---|---|---|---|
-| Wilks + xấp xỉ Bartlett (baseline) | | Λ* = 0.9157; 128.87 > $\chi^2_9(0.95)$ = 16.92 | 2.03e-23 | Bác bỏ H0 |
-| Wilks, F chính xác (Hotelling T²) | | F(9, 1460) = 14.93; T² = 135.12 | 2.03e-23 | Bác bỏ H0 |
-| Pillai (baseline) | | Pillai = 0.0843; F(9, 1460) = 14.93 | 2.03e-23 | Bác bỏ H0 |
-| Hoán vị Pillai (B = 999) | Không chuẩn | Pillai = 0.0843 | 0.001 | Bác bỏ H0 |
-| PERMANOVA (B = 999) | Không chuẩn | F = 28.2; R² = 0.019 | 0.001 | Bác bỏ H0 |
-| Bootstrap trong từng nhóm (B = 999) | Box's M, cỡ mẫu không cân bằng | Pillai = 0.0843 | 0.001 | Bác bỏ H0 |
-| MANOVA trên hạng (B = 999) | Không chuẩn từng biến, thang thứ bậc | Pillai = 0.0923 | 0.001 | Bác bỏ H0 |
-| Pillai, bỏ JobLevel | Đa cộng tuyến | Pillai = 0.0837; F(8, 1461) = 16.67 | 7.69e-24 | Bác bỏ H0 |
+| Phương pháp | Vi phạm được xử lý | Kịch bản 1 (9 biến): thống kê | p-giá trị | Kịch bản 2 (8 biến): thống kê | p-giá trị |
+|---|---|---|---|---|---|
+| Wilks + xấp xỉ Bartlett (baseline) | | Λ* = 0.9157; 128.87 | 2.03e-23 | Λ* = 0.9157; 128.91 | 4.76e-24 |
+| Wilks, F chính xác (Hotelling T²) | | F(9, 1460) = 14.93 | 2.03e-23 | F(8, 1461) = 16.81 | 4.77e-24 |
+| Pillai (baseline) | | Pillai = 0.0843 | 2.03e-23 | Pillai = 0.0843 | 4.77e-24 |
+| Hoán vị Pillai (B = 999) | Không chuẩn | Pillai = 0.0843 | 0.001 | Pillai = 0.0843 | 0.001 |
+| PERMANOVA (B = 999) | Không chuẩn | F = 28.2; R² = 0.019 | 0.001 | F = 26.9; R² = 0.018 | 0.001 |
+| Bootstrap trong từng nhóm (B = 999) | Box's M, cỡ mẫu không cân bằng | Pillai = 0.0843 | 0.001 | Pillai = 0.0843 | 0.001 |
+| MANOVA trên hạng (B = 999) | Không chuẩn từng biến, thang thứ bậc | Pillai = 0.0923 | 0.001 | Pillai = 0.0899 | 0.001 |
 
-**Kết luận câu (c).** Với mức ý nghĩa 5%, tồn tại **khác biệt đa biến có ý nghĩa thống kê** giữa nhóm nhân viên đã nghỉ việc và nhóm đang làm việc trên vectơ 9 biến về thu nhập – nghề nghiệp, kinh nghiệm và tâm lý – hành vi. Kết luận này không thay đổi khi dùng các phương pháp vững với từng loại vi phạm (không chuẩn, ma trận hiệp phương sai khác nhau, cỡ mẫu không cân bằng, đa cộng tuyến). Mức khác biệt nhỏ (Pillai = 0.084; PERMANOVA R² = 1.9%), nghĩa là hai nhóm chồng lấn nhiều. Theo thống kê mô tả, nhóm nghỉ việc có thu nhập, cấp bậc, thâm niên và các mức hài lòng thấp hơn; những biến có khác biệt đáng kể được xác định ở câu (d).
+Ở cả 7 phương pháp và cả hai kịch bản, p-giá trị < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%.
+
+**Kết luận.** Với mức ý nghĩa 5%, tồn tại **khác biệt đa biến có ý nghĩa thống kê** giữa nhóm nhân viên đã nghỉ việc và nhóm đang làm việc trên vectơ 9 biến về thu nhập – nghề nghiệp, kinh nghiệm và tâm lý – hành vi. Kết luận này không thay đổi khi dùng các phương pháp vững với từng loại vi phạm (không chuẩn, ma trận hiệp phương sai khác nhau, cỡ mẫu không cân bằng) và khi bỏ `MonthlyIncome` để loại đa cộng tuyến (kịch bản 2, 8 biến). Mức khác biệt nhỏ (Pillai = 0.084; PERMANOVA R² = 1.9%), nghĩa là hai nhóm chồng lấn nhiều. Theo thống kê mô tả, nhóm nghỉ việc có thu nhập, cấp bậc, thâm niên và các mức hài lòng thấp hơn; những biến có khác biệt đáng kể được xác định ở mục 5.

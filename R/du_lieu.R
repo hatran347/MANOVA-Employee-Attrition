@@ -31,3 +31,7 @@ nhom_nhan <- factor(nhan_attrition[as.character(nhom)], levels = c("Working", "L
 # 4 o cua mo hinh hai nhan to: Working-NoOT, Left-NoOT, Working-OT, Left-OT
 o <- factor(paste(nhan_attrition[as.character(ea$Attrition)], nhan_overtime[as.character(ea$OverTime)], sep = "-"),
             levels = c("Working-NoOT", "Left-NoOT", "Working-OT", "Left-OT"))
+
+# Kich ban 2 cua MANOVA mot nhan to (cau b): bo MonthlyIncome do da cong tuyen voi JobLevel
+bien_kb2 <- setdiff(bien, "MonthlyIncome")
+X_kb2 <- X[, bien_kb2]
