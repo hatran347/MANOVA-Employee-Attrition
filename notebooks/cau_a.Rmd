@@ -12,13 +12,13 @@ output:
 ```{r setup, include=FALSE}
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
+here::i_am("notebooks/cau_a.Rmd")   # xác định thư mục gốc project khi chạy riêng notebook
 source(here::here("R", "setup.R"))
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = "center")
 ```
 
 ## Đọc dữ liệu
 
-File `DataEA.xls` có đuôi .xls nhưng nội dung là văn bản phân tách bằng dấu phẩy (CSV, mã hóa UTF-8 có BOM), nên được đọc bằng `read.csv()`.
 
 ```{r doc-du-lieu}
 ea_goc <- read.csv(here::here("data", "DataEA.xls"), fileEncoding = "UTF-8-BOM")
@@ -26,7 +26,50 @@ dim(ea_goc)
 str(ea_goc)
 ```
 
-Dữ liệu có 1470 quan sát (mỗi quan sát là một nhân viên) và 35 biến.
+Dữ liệu gồm **1470 quan sát và 35 biến**, mỗi quan sát là một nhân viên của công ty, mô tả đặc điểm cá nhân, công việc, thu nhập, thâm niên và mức độ hài lòng của nhân viên, cùng tình trạng nghỉ việc (`Attrition`). Cấu trúc biến trùng với bộ dữ liệu *IBM HR Analytics Employee Attrition & Performance* (dữ liệu mô phỏng do IBM xây dựng, công bố trên Kaggle).
+
+```{r phan-loai-bien}
+nhom_nd <- list(
+  "Kết quả"                = c("Attrition"),
+  "Nhân khẩu học"          = c("Age", "Gender", "MaritalStatus", "Education", "EducationField",
+                               "DistanceFromHome", "Over18"),
+  "Công việc – tổ chức"    = c("Department", "JobRole", "JobLevel", "BusinessTravel", "OverTime",
+                               "StandardHours", "EmployeeCount", "EmployeeNumber"),
+  "Thu nhập – đãi ngộ"     = c("MonthlyIncome", "DailyRate", "HourlyRate", "MonthlyRate",
+                               "PercentSalaryHike", "StockOptionLevel"),
+  "Kinh nghiệm – thâm niên" = c("TotalWorkingYears", "NumCompaniesWorked", "YearsAtCompany", "YearsInCurrentRole",
+                               "YearsSinceLastPromotion", "YearsWithCurrManager", "TrainingTimesLastYear"),
+  "Đánh giá – tâm lý"      = c("JobSatisfaction", "EnvironmentSatisfaction", "RelationshipSatisfaction",
+                               "WorkLifeBalance", "JobInvolvement", "PerformanceRating")
+)
+# Biến số nguyên nhưng là mã của thang đo thứ bậc
+thu_bac <- c("Education", "JobLevel", "StockOptionLevel", "JobSatisfaction", "EnvironmentSatisfaction",
+             "RelationshipSatisfaction", "WorkLifeBalance", "JobInvolvement", "PerformanceRating")
+bien_dung <- c("MonthlyIncome", "JobLevel", "TotalWorkingYears", "YearsAtCompany", "YearsInCurrentRole",
+               "JobSatisfaction", "EnvironmentSatisfaction", "WorkLifeBalance", "JobInvolvement")
+
+phan_loai <- data.frame(bien = unlist(nhom_nd), nhom_noi_dung = rep(names(nhom_nd), lengths(nhom_nd)),
+                        row.names = NULL)
+phan_loai$loai <- ifelse(sapply(ea_goc[phan_loai$bien], is.character), "Định tính (danh nghĩa)",
+                  ifelse(phan_loai$bien %in% thu_bac, "Định tính (thứ bậc, mã hóa số)", "Định lượng"))
+phan_loai$so_gia_tri <- sapply(ea_goc[phan_loai$bien], function(x) length(unique(x)))
+phan_loai$vai_tro <- ifelse(phan_loai$bien %in% c("Attrition", "OverTime"), "Nhân tố",
+                     ifelse(phan_loai$bien %in% bien_dung, "Biến phụ thuộc",
+                     ifelse(phan_loai$so_gia_tri == 1, "Loại (biến hằng)",
+                     ifelse(phan_loai$bien == "EmployeeNumber", "Mã định danh", "Không dùng"))))
+phan_loai
+
+# Số biến theo loại và theo vai trò
+knitr::kable(table(phan_loai$loai), col.names = c("Loại biến", "Số biến"))
+knitr::kable(table(phan_loai$vai_tro), col.names = c("Vai trò", "Số biến"))
+```
+
+**Nhận xét:**
+
+- **9 biến định tính danh nghĩa** (kiểu chuỗi): `Attrition`, `OverTime`, `BusinessTravel`, `Department`, `EducationField`, `Gender`, `JobRole`, `MaritalStatus`, `Over18`.
+- **9 biến định tính thứ bậc được mã hóa bằng số**: trình độ học vấn, cấp bậc công việc, mức quyền chọn cổ phiếu, đánh giá hiệu suất và 5 thang hài lòng/tham gia (1–4).
+- **17 biến định lượng**, trong đó `EmployeeNumber` là mã định danh và `EmployeeCount`, `StandardHours` là biến hằng; còn lại 14 biến định lượng thực sự (tuổi, thu nhập và các mức lương theo ngày/giờ/tháng, khoảng cách đến nơi làm, số năm làm việc, số công ty đã làm, số lần đào tạo, % tăng lương).
+- Theo đề, bài dùng **2 nhân tố** (`Attrition`, `OverTime`) và **9 biến phụ thuộc** thuộc 3 nhóm thu nhập – nghề nghiệp, kinh nghiệm và tâm lý – hành vi; 3 biến hằng bị loại, các biến còn lại không dùng trong phân tích.
 
 ## Kiểm tra chất lượng dữ liệu
 
@@ -62,20 +105,35 @@ knitr::kable(table(ea_goc$OverTime),  col.names = c("OverTime", "Số nhân viê
 
 **Nhận xét:** Hai biến chỉ nhận đúng hai giá trị "No"/"Yes", không có giá trị lỗi.
 
-### Miền giá trị và tính nhất quán của 9 biến định lượng
+### Thống kê mô tả, phân phối và tính nhất quán của 9 biến định lượng
+
 
 ```{r mien-gia-tri}
 bien <- c("MonthlyIncome", "JobLevel",
           "TotalWorkingYears", "YearsAtCompany", "YearsInCurrentRole",
           "JobSatisfaction", "EnvironmentSatisfaction", "WorkLifeBalance", "JobInvolvement")
+# Thống kê như summary() (Min, Q1, Median, Mean, Q3, Max), thêm Skewness và Kurtosis
+mo_ta_a <- t(sapply(ea_goc[bien], function(x) c(summary(x),
+                                                Skewness = psych::skew(x),
+                                                Kurtosis = psych::kurtosi(x))))
+knitr::kable(mo_ta_a, digits = 2)
 
-# Giá trị nhỏ nhất, lớn nhất và số mức của từng biến
-data.frame(bien = bien,
-           nho_nhat = sapply(ea_goc[bien], min),
-           lon_nhat = sapply(ea_goc[bien], max),
-           so_muc   = sapply(ea_goc[bien], function(x) length(unique(x))),
-           row.names = NULL)
+```
 
+```{r phan-phoi-bien, fig.width=12, fig.height=9}
+par(mfrow = c(3, 3), mar = c(4, 4.5, 3, 1))
+for (v in bien) {
+  if (length(unique(ea_goc[[v]])) <= 5) {
+    barplot(table(ea_goc[[v]]), main = v, col = "salmon", ylab = "Số nhân viên")   # biến thứ bậc
+  } else {
+    hist(ea_goc[[v]], breaks = 30, main = v, xlab = "", ylab = "Số nhân viên", col = "salmon")
+  }
+}
+par(mfrow = c(1, 1))
+```
+
+Check logic ràng buộc thời gian của các biến
+```{r rang-buoc-logic}
 # Ràng buộc logic giữa các biến về thời gian (số dòng vi phạm)
 data.frame(
   rang_buoc = c("YearsInCurrentRole <= YearsAtCompany",
@@ -89,7 +147,10 @@ data.frame(
 
 **Nhận xét:**
 
-- 4 biến tâm lý – hành vi chỉ nhận các giá trị 1–4 và `JobLevel` nhận 1–5, đúng với thang đo; `MonthlyIncome` và 3 biến số năm đều không âm.
+- **Miền giá trị:** 4 biến tâm lý – hành vi nhận các giá trị 1–4 và `JobLevel` nhận 1–5, đúng thang đo; thu nhập từ 1009 đến 19999, các biến số năm từ 0 đến 40 (`YearsInCurrentRole` tối đa 18), không có giá trị âm.
+- **Thu nhập và kinh nghiệm lệch phải:** trung bình lớn hơn trung vị (thu nhập 6503 so với 4919; số năm tại công ty 7.01 so với 5) và hệ số bất đối xứng dương 0.92–1.76; `YearsAtCompany` có đuôi phải dài nhất (skew = 1.76, kurtosis = 3.91). Histogram cho thấy phần lớn nhân viên có thu nhập thấp và thâm niên ngắn, một số ít có thu nhập hoặc thâm niên rất cao.
+- **`JobLevel`** tập trung ở cấp 1–2, số nhân viên giảm dần ở các cấp cao (skew = 1.02).
+- **4 biến tâm lý – hành vi** có trung bình 2.72–2.76 và trung vị 3, lệch trái nhẹ (skew −0.55 đến −0.32). `JobSatisfaction` và `EnvironmentSatisfaction` có số nhân viên khá đều ở các mức (kurtosis ≈ −1.2, phân phối dẹt); `WorkLifeBalance` và `JobInvolvement` tập trung ở mức 3.
 - Không có dòng nào vi phạm ràng buộc logic: số năm ở vị trí hiện tại không vượt số năm tại công ty, số năm tại công ty không vượt tổng số năm làm việc, và tổng số năm làm việc nhỏ hơn tuổi.
 - `JobLevel` và 4 biến tâm lý – hành vi (5 biến) là **biến thứ bậc** có ít mức (4–5 mức), được xử lý như biến định lượng theo yêu cầu của đề.
 
@@ -105,11 +166,66 @@ ngoai_lai_1c <- function(x) {
 data.frame(bien = bien,
            so_ngoai_lai = sapply(ea_goc[bien], function(x) sum(ngoai_lai_1c(x))),
            ty_le_pct    = round(sapply(ea_goc[bien], function(x) mean(ngoai_lai_1c(x))) * 100, 1),
-           do_lech      = round(sapply(ea_goc[bien], function(x) mean((x - mean(x))^3) / sd(x)^3), 2),
            row.names = NULL)
 ```
 
-**Nhận xét:** `MonthlyIncome` (114 giá trị, 7.8%), `YearsAtCompany` (104, 7.1%), `TotalWorkingYears` (63, 4.3%) và `YearsInCurrentRole` (21, 1.4%) có giá trị nằm ngoài khoảng trên, do các biến này lệch phải (hệ số bất đối xứng 0.92–1.76). Các giá trị này nằm trong miền hợp lệ (lương tối đa 19999, số năm tối đa 40, không vi phạm ràng buộc logic) và ứng với nhóm nhân viên có thu nhập hoặc thâm niên cao, nên được **giữ nguyên**: MANOVA so sánh vectơ trung bình, việc loại hay cắt (winsorize) các giá trị này sẽ làm thay đổi chính các trung bình cần so sánh. 5 biến thứ bậc không có ngoại lai. Ngoại lai nhiều chiều được xét ở câu (b).
+**Kiểm tra tính hợp lý của các ngoại lai.** Một giá trị ngoại lai là hợp lý nếu nó phù hợp với các đặc điểm khác của chính nhân viên đó (tuổi, cấp bậc, thâm niên). Bảng dưới so sánh trung bình các đặc điểm liên quan giữa nhóm ngoại lai và nhóm còn lại, cho 4 biến có ngoại lai.
+
+```{r ngoai-lai-ho-so}
+bien_ho_so <- c("Age", "JobLevel", "MonthlyIncome", "TotalWorkingYears", "YearsAtCompany", "YearsInCurrentRole")
+bien_co_nl <- c("MonthlyIncome", "TotalWorkingYears", "YearsAtCompany", "YearsInCurrentRole")
+ho_so_nl <- do.call(rbind, lapply(bien_co_nl, function(v) {
+  nl <- ngoai_lai_1c(ea_goc[[v]])
+  rbind(data.frame(bien_xet = v, nhom = paste0("Ngoại lai (n = ", sum(nl), ")"),
+                   t(colMeans(ea_goc[nl, bien_ho_so]))),
+        data.frame(bien_xet = v, nhom = paste0("Còn lại (n = ", sum(!nl), ")"),
+                   t(colMeans(ea_goc[!nl, bien_ho_so]))))
+}))
+knitr::kable(ho_so_nl, digits = 1, row.names = FALSE)
+
+# Cấp bậc và vị trí công việc của các nhân viên có thu nhập ngoại lai
+nl_thu_nhap <- ngoai_lai_1c(ea_goc$MonthlyIncome)
+knitr::kable(table(JobLevel = ea_goc$JobLevel[nl_thu_nhap]), col.names = c("JobLevel", "Số nhân viên"))
+knitr::kable(table(JobRole = ea_goc$JobRole[nl_thu_nhap]), col.names = c("JobRole", "Số nhân viên"))
+
+# Khoảng thu nhập theo cấp bậc (toàn bộ dữ liệu)
+thu_nhap_cap <- t(sapply(split(ea_goc$MonthlyIncome, ea_goc$JobLevel),
+                         function(x) c(n = length(x), nho_nhat = min(x), trung_vi = median(x), lon_nhat = max(x))))
+knitr::kable(data.frame(JobLevel = rownames(thu_nhap_cap), thu_nhap_cap), row.names = FALSE,
+             caption = "MonthlyIncome theo JobLevel")
+```
+
+```{r ngoai-lai-bieu-do, fig.width=12, fig.height=4.5}
+q_tn <- quantile(ea_goc$MonthlyIncome, c(0.25, 0.75))
+nguong_tn <- q_tn[2] + 1.5 * (q_tn[2] - q_tn[1])            # ngưỡng trên của thu nhập
+nl_nam <- ngoai_lai_1c(ea_goc$YearsAtCompany)
+par(mfrow = c(1, 3), mar = c(4.5, 4.5, 3, 1))
+
+# (1) Thu nhập theo cấp bậc
+boxplot(MonthlyIncome ~ JobLevel, data = ea_goc, col = "grey85",
+        main = "MonthlyIncome theo JobLevel", xlab = "JobLevel", ylab = "MonthlyIncome")
+abline(h = nguong_tn, col = "salmon", lty = 2)
+
+# (2) Thu nhập theo tổng số năm làm việc
+plot(ea_goc$TotalWorkingYears, ea_goc$MonthlyIncome, pch = 19, cex = 0.6,
+     col = ifelse(nl_thu_nhap, "salmon", "grey60"),
+     main = "MonthlyIncome theo TotalWorkingYears", xlab = "TotalWorkingYears", ylab = "MonthlyIncome")
+abline(h = nguong_tn, col = "salmon", lty = 2)
+
+# (3) Số năm tại công ty theo tổng số năm làm việc
+plot(ea_goc$TotalWorkingYears, ea_goc$YearsAtCompany, pch = 19, cex = 0.6,
+     col = ifelse(nl_nam, "salmon", "grey60"),
+     main = "YearsAtCompany theo TotalWorkingYears", xlab = "TotalWorkingYears", ylab = "YearsAtCompany")
+abline(0, 1, col = "blue", lty = 2)   # đường YearsAtCompany = TotalWorkingYears
+par(mfrow = c(1, 1))
+```
+
+**Nhận xét:**
+
+- **Số lượng:** `MonthlyIncome` (114 giá trị, 7.8%), `YearsAtCompany` (104, 7.1%), `TotalWorkingYears` (63, 4.3%) và `YearsInCurrentRole` (21, 1.4%) có giá trị nằm ngoài khoảng trên, đều ở phía trên do các biến này lệch phải. 5 biến thứ bậc không có ngoại lai.
+- **Thu nhập cao đi cùng cấp bậc cao và thâm niên dài.** Cả 114 nhân viên có thu nhập ngoại lai (trên 16581) đều ở cấp bậc 4–5 (45 người cấp 4 và toàn bộ 69 người cấp 5), giữ vị trí `Manager` (74) hoặc `Research Director` (40). So với nhóm còn lại, họ lớn tuổi hơn (47.5 so với 36.0 tuổi) và có tổng số năm làm việc dài hơn nhiều (26.1 so với 10.0 năm). Thu nhập tăng rõ theo cấp bậc: trung vị 2670 ở cấp 1, 9980 ở cấp 3 và 19232 ở cấp 5, và mọi nhân viên cấp 5 có thu nhập từ 18041 trở lên. Biểu đồ (1) và (2) cho thấy các điểm ngoại lai tập trung ở cấp bậc cao và ở vùng nhiều năm kinh nghiệm (tương quan giữa thu nhập và tổng số năm làm việc r = 0.77).
+- **Thâm niên dài đi cùng tuổi cao.** Nhân viên có `TotalWorkingYears` ngoại lai (trên 28.5 năm) có tuổi trung bình 53.4, cấp bậc trung bình 4.2. Nhân viên có `YearsAtCompany` ngoại lai (trên 18 năm) có tuổi từ 38 đến 60 và tổng số năm làm việc từ 19 đến 40; trung bình 93% sự nghiệp của họ là ở công ty này, nên các điểm nằm sát đường `YearsAtCompany = TotalWorkingYears` trên biểu đồ (3). Nhân viên có `YearsInCurrentRole` ngoại lai (trên 14.5 năm) cũng có số năm tại công ty trung bình 21.5 năm.
+- **Kết luận:** các ngoại lai một chiều là những nhân viên lâu năm, lớn tuổi, cấp bậc và thu nhập cao; giá trị của chúng nhất quán với các biến khác của chính nhân viên đó và nằm trong miền hợp lệ, nên đây là quan sát thật chứ không phải lỗi nhập liệu. Các quan sát này được **giữ nguyên**: MANOVA so sánh vectơ trung bình, việc loại hay cắt (winsorize) chúng sẽ làm thay đổi chính các trung bình cần so sánh và bỏ đi nhóm nhân viên cấp cao. Ngoại lai nhiều chiều được xét ở câu (b).
 
 ## Dữ liệu sau xử lý
 
@@ -131,11 +247,14 @@ n1 <- nrow(X1); n2 <- nrow(X2)
 knitr::kable(t(c(n = n, p = p, n1 = n1, n2 = n2)))
 
 # 4 ô của mô hình hai nhân tố
-o <- interaction(ea$Attrition, ea$OverTime, sep = ".")
+nhan_attrition <- c(No = "Working", Yes = "Left")
+nhan_overtime  <- c(No = "NoOT", Yes = "OT")
+o <- factor(paste(nhan_attrition[as.character(ea$Attrition)], nhan_overtime[as.character(ea$OverTime)], sep = "-"),
+            levels = c("Working-NoOT", "Left-NoOT", "Working-OT", "Left-OT"))
 knitr::kable(table(Attrition = ea$Attrition, OverTime = ea$OverTime))
 ```
 
-Dữ liệu sạch gồm 1470 nhân viên, 2 nhân tố và 9 biến định lượng. Các bước tạo dữ liệu này được gom vào `R/du_lieu.R` để các câu sau dùng chung. Cỡ mẫu **không cân bằng**: 1233 nhân viên đang làm việc và 237 nhân viên đã nghỉ việc; 4 ô Attrition × OverTime có cỡ mẫu: (No, No) = 944, (No, Yes) = 289, (Yes, No) = 110, (Yes, Yes) = 127. Trong các bảng sau, mỗi ô được ký hiệu `Attrition.OverTime`, ví dụ `Yes.No` là nhân viên đã nghỉ việc và không làm thêm giờ.
+Dữ liệu sạch gồm 1470 nhân viên, 2 nhân tố và 9 biến định lượng. Các bước tạo dữ liệu này được gom vào `R/du_lieu.R` để các câu sau dùng chung. Cỡ mẫu **không cân bằng**: 1233 nhân viên đang làm việc và 237 nhân viên đã nghỉ việc; 4 ô Attrition × OverTime có cỡ mẫu: `Working-NoOT` = 944, `Working-OT` = 289, `Left-NoOT` = 110, `Left-OT` = 127. Trong các bảng sau, nhóm `Attrition` được ký hiệu **Working** (đang làm việc, No) và **Left** (đã nghỉ việc, Yes), `OverTime` được ký hiệu **NoOT** (không làm thêm giờ, No) và **OT** (có làm thêm giờ, Yes); ví dụ `Left-NoOT` là nhân viên đã nghỉ việc và không làm thêm giờ.
 
 ## Mô hình phân tích
 

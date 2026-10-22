@@ -1,22 +1,220 @@
 ---
-title: "Câu d – Phân tích hậu nghiệm ANOVA một nhân tố"
-output: html_document
+title: "Câu d – Phân tích hậu nghiệm"
+author: "Vũ Hà Thư - 25C23004"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    df_print: kable
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
+here::i_am("notebooks/cau_d.Rmd")   # xác định thư mục gốc project khi chạy riêng notebook
+source(here::here("R", "setup.R"))
+source(here::here("R", "du_lieu.R"))   # ea, X, nhom, nhom_nhan, bien, ... (xem câu a)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = "center")
 ```
 
-## Mục tiêu
+Câu (c) cho thấy vectơ trung bình 9 biến của nhóm Working và nhóm Left khác nhau. Câu này xác định khác biệt nằm ở **khối biến** nào và **biến** nào, theo hai tầng:
 
-Phân tích hậu nghiệm ANOVA một nhân tố.
+1. **MANOVA theo từng khối biến** (thu nhập – nghề nghiệp, kinh nghiệm, tâm lý – hành vi): mỗi khối có thực sự khác nhau giữa hai nhóm không.
+2. **Phân tích từng biến** bằng ANOVA một nhân tố, kèm phiên bản không cần phương sai bằng nhau (Welch) và phiên bản phi tham số (Mann-Whitney), hiệu chỉnh Holm cho 9 biến.
 
-## Phân tích
+Theo Johnson & Wichern (mục 6.7), chỉ khi kiểm định nhiều chiều cho thấy có khác biệt mới đi sâu vào từng biến; điều kiện này đã thỏa ở câu (c).
 
-```{r}
-# bổ sung code r tại đây
+## Hiệu chỉnh cho nhiều kiểm định (Holm)
+
+Khi thực hiện $m$ kiểm định cùng lúc, mỗi kiểm định ở mức 5% thì xác suất có ít nhất một kết luận sai (bác bỏ nhầm $H_0$) tăng lên đáng kể; với 9 kiểm định độc lập là $1 - 0.95^9 \approx 37\%$. Thủ tục Holm (1979, *Scandinavian Journal of Statistics* 6) giữ xác suất sai lầm loại I tổng thể (family-wise error rate) ở mức $\alpha$:
+
+1. Sắp xếp p-giá trị tăng dần $p_{(1)} \le p_{(2)} \le \dots \le p_{(m)}$.
+2. p-giá trị hiệu chỉnh của kiểm định thứ $i$ trong thứ tự này là $\tilde p_{(i)} = \max_{k \le i}\big\{\min\big(1, (m - k + 1)\,p_{(k)}\big)\big\}$: p-giá trị nhỏ nhất nhân $m$, p-giá trị nhỏ thứ hai nhân $m - 1$, …; lấy max lũy tiến để giữ đúng thứ tự.
+3. Bác bỏ $H_0$ của kiểm định nào có $\tilde p < \alpha$.
+
+Holm luôn bác bỏ ít nhất bằng Bonferroni (nhân mọi p-giá trị với $m$) nên ít bảo thủ hơn mà vẫn kiểm soát được sai lầm tổng thể. Ở câu này, $m = 3$ cho các khối biến và $m = 9$ cho các biến.
+
+## MANOVA theo từng khối biến
+
+Với mỗi khối $k$ gồm $p_k$ biến, ký hiệu $\boldsymbol\mu_{1}^{(k)}$, $\boldsymbol\mu_{2}^{(k)}$ là vectơ trung bình của các biến trong khối ở nhóm Working và Left. Kiểm định giả thuyết
+
+$$
+\begin{aligned}
+H_0 &: \boldsymbol\mu_{1}^{(k)} = \boldsymbol\mu_{2}^{(k)} \\
+H_A &: \boldsymbol\mu_{1}^{(k)} \neq \boldsymbol\mu_{2}^{(k)}
+\end{aligned}
+$$
+
+với $p_k = 2$ (thu nhập – nghề nghiệp), 3 (kinh nghiệm), 4 (tâm lý – hành vi). Thống kê Pillai $V = \text{tr}[\mathbf B(\mathbf B + \mathbf W)^{-1}]$ và F tương ứng như câu (c), nhưng $\mathbf B$, $\mathbf W$ chỉ tính trên các biến của khối ($p_k \times p_k$); với $g = 2$, $F = \frac{n - p_k - 1}{p_k}\cdot\frac{V}{1 - V} \sim F_{p_k,\,n - p_k - 1}$. Vì giả định chuẩn và Box's M vi phạm (câu b), mỗi khối được kiểm tra lại bằng **bootstrap trong từng nhóm** (B = 999) như mục 3 câu (c). p-giá trị F được hiệu chỉnh Holm qua 3 khối.
+
+```{r manova-khoi}
+khoi <- list("Thu nhập – nghề nghiệp" = c("MonthlyIncome", "JobLevel"),
+             "Kinh nghiệm"            = c("TotalWorkingYears", "YearsAtCompany", "YearsInCurrentRole"),
+             "Tâm lý – hành vi"       = c("JobSatisfaction", "EnvironmentSatisfaction",
+                                          "WorkLifeBalance", "JobInvolvement"))
+
+# Pillai bootstrap trong từng nhóm cho một ma trận dữ liệu M
+pillai_bootstrap <- function(M, f, B = B_lan) {
+  E <- M
+  for (l in levels(f)) {
+    i <- which(f == l)
+    E[i, ] <- sweep(M[i, , drop = FALSE], 2, colMeans(M[i, , drop = FALSE]))   # phần dư trong nhóm
+  }
+  v <- numeric(B)
+  for (b in 1:B) {
+    Eb <- E
+    for (l in levels(f)) {
+      i <- which(f == l)
+      Eb[i, ] <- E[sample(i, length(i), replace = TRUE), ]
+    }
+    v[b] <- summary(manova(Eb ~ f), test = "Pillai")$stats[1, "Pillai"]
+  }
+  v
+}
+
+set.seed(2026)
+manova_khoi <- do.call(rbind, lapply(names(khoi), function(k) {
+  M  <- X[, khoi[[k]], drop = FALSE]
+  st <- summary(manova(M ~ nhom), test = "Pillai")$stats
+  v  <- pillai_bootstrap(M, nhom)
+  data.frame(khoi = k, p_k = ncol(M), Pillai = st[1, "Pillai"], F = st[1, "approx F"],
+             df1 = st[1, "num Df"], df2 = st[1, "den Df"], p = st[1, "Pr(>F)"],
+             p_bootstrap = (sum(v >= st[1, "Pillai"]) + 1) / (B_lan + 1))
+}))
+manova_khoi$p_holm <- p.adjust(manova_khoi$p, method = "holm")
+
+bang(transform(manova_khoi, p = fp(p), p_holm = fp(p_holm)), digits = 4, row.names = FALSE,
+     col.names = c("Khối biến", "Số biến", "Pillai V", "F", "df1", "df2", "p-giá trị", "p bootstrap", "p Holm"))
 ```
 
-## Kết quả và nhận xét
+**Nhận xét:**
 
-Viết kết quả kiểm định, cách diễn giải và kết luận tại đây.
+- **Thu nhập – nghề nghiệp:** Pillai = 0.0286, F(2, 1467) = 21.60, p-giá trị Holm = 5.7e-10 < 0.05 (p bootstrap = 0.001), nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình (thu nhập, cấp bậc) của hai nhóm khác nhau.
+- **Kinh nghiệm:** Pillai = 0.0392, F(3, 1466) = 19.94, p-giá trị Holm = 2.3e-12 < 0.05 (p bootstrap = 0.001), nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình 3 biến số năm của hai nhóm khác nhau.
+- **Tâm lý – hành vi:** Pillai = 0.0435, F(4, 1465) = 16.66, p-giá trị Holm = 7.0e-13 < 0.05 (p bootstrap = 0.001), nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình 4 biến hài lòng – tham gia của hai nhóm khác nhau.
+- Cả 3 khối đều khác nhau giữa hai nhóm, kể cả khi không dùng giả định chuẩn và đồng nhất hiệp phương sai. Khối tâm lý – hành vi có Pillai lớn nhất (0.0435) dù chênh lệch của từng biến trong khối nhỏ, vì 4 biến gần như không tương quan (câu b) nên mỗi biến đóng góp một phần khác biệt riêng, không trùng lặp.
+
+## Phân tích từng biến
+
+### Các kiểm định và công thức
+
+Với mỗi biến $X$ (ví dụ `MonthlyIncome`), ký hiệu $\mu_1$, $\mu_2$ là trung bình tổng thể của biến ở nhóm Working và Left. Kiểm định giả thuyết
+
+$$
+\begin{aligned}
+H_0 &: \mu_1 = \mu_2 \\
+H_A &: \mu_1 \neq \mu_2
+\end{aligned}
+$$
+
+Ba kiểm định được dùng song song, mỗi kiểm định đòi hỏi giả định khác nhau.
+
+**(1) ANOVA một nhân tố (kiểm định F của Fisher)** — giả định chuẩn và phương sai bằng nhau:
+
+$$
+F = \frac{SSB/(g - 1)}{SSW/(n - g)}, \qquad SSB = \sum_{\ell=1}^{2} n_\ell(\bar x_\ell - \bar x)^2, \qquad SSW = \sum_{\ell=1}^{2}\sum_{j=1}^{n_\ell}(x_{\ell j} - \bar x_\ell)^2,
+$$
+
+với $x_{\ell j}$ là giá trị của biến ở nhân viên $j$ nhóm $\ell$, $\bar x_\ell$ là trung bình nhóm, $\bar x$ là trung bình chung, $g = 2$, $n = 1470$. $SSB$ đo khác biệt giữa trung bình hai nhóm, $SSW$ đo biến thiên trong nhóm; $F \sim F_{1,\,1468}$ khi $H_0$ đúng. $SSB$ và $SSW$ chính là phần tử đường chéo của $\mathbf B$ và $\mathbf W$ ở câu (c). Với hai nhóm, $F = t^2$ của kiểm định t hai mẫu.
+
+**Độ lớn ảnh hưởng $\omega^2$** (Hays, 1963, *Statistics for Psychologists*; ngưỡng tham khảo của Cohen, 1988: khoảng 0.01 nhỏ, 0.06 trung bình, 0.14 lớn):
+
+$$
+\omega^2 = \frac{SSB - (g - 1)\,MSW}{SST + MSW}, \qquad MSW = \frac{SSW}{n - g}, \quad SST = SSB + SSW,
+$$
+
+ước lượng tỷ lệ phương sai của biến được giải thích bởi `Attrition` trong tổng thể; $\omega^2$ ít chệch hơn $\eta^2 = SSB/SST$, nhất là khi cỡ mẫu các nhóm không cân bằng.
+
+**(2) Kiểm định t Welch** — không giả định phương sai bằng nhau (Levene ở câu b bác bỏ cho 6/9 biến):
+
+$$
+t = \frac{\bar x_2 - \bar x_1}{\sqrt{\dfrac{s_1^2}{n_1} + \dfrac{s_2^2}{n_2}}}, \qquad
+\nu = \frac{\left(\dfrac{s_1^2}{n_1} + \dfrac{s_2^2}{n_2}\right)^2}{\dfrac{(s_1^2/n_1)^2}{n_1 - 1} + \dfrac{(s_2^2/n_2)^2}{n_2 - 1}},
+$$
+
+với $s_1^2$, $s_2^2$ là phương sai mẫu của biến ở nhóm Working ($n_1 = 1233$) và Left ($n_2 = 237$). Mẫu số là sai số chuẩn của hiệu hai trung bình, dùng riêng phương sai từng nhóm thay vì phương sai gộp; bậc tự do $\nu$ (Welch–Satterthwaite) giảm khi phương sai hai nhóm chênh lệch. Khoảng tin cậy 95% của hiệu: $(\bar x_2 - \bar x_1) \pm t_{\nu}(0.975)\sqrt{s_1^2/n_1 + s_2^2/n_2}$. Với hai nhóm, Welch t tương đương Welch ANOVA ($F_{Welch} = t^2$). Đây là kiểm định chính, theo hướng xử lý ở câu (b).
+
+**(3) Kiểm định Mann-Whitney (Wilcoxon tổng hạng)** — phi tham số, không giả định chuẩn, phù hợp với 5 biến thứ bậc:
+
+$$
+W = \sum_{j \in \text{Working}} R_j - \frac{n_1(n_1 + 1)}{2},
+$$
+
+với $R_j$ là hạng của nhân viên $j$ khi xếp cả 1470 nhân viên theo giá trị của biến (giá trị bằng nhau nhận hạng trung bình). $W$ đếm số cặp (một nhân viên Working, một nhân viên Left) mà người Working có giá trị lớn hơn (cặp bằng nhau tính 1/2); nếu hai nhóm có cùng phân phối, $W$ dao động quanh $n_1 n_2 / 2 = 146110.5$. p-giá trị lấy theo xấp xỉ chuẩn có hiệu chỉnh cho giá trị trùng hạng.
+
+```{r tung-bien}
+tung_bien <- do.call(rbind, lapply(bien, function(v) {
+  y  <- ea[[v]]
+  a  <- anova(lm(y ~ nhom))                          # ANOVA một nhân tố
+  ss <- a$`Sum Sq`; ms <- a$`Mean Sq`
+  w  <- t.test(y ~ nhom)                             # Welch (mặc định var.equal = FALSE), hiệu No − Yes
+  mw <- wilcox.test(y ~ nhom, exact = FALSE)         # Mann-Whitney
+  data.frame(bien = v,
+             tb_Working = mean(y[nhom == "No"]), tb_Left = mean(y[nhom == "Yes"]),
+             chenh = mean(y[nhom == "Yes"]) - mean(y[nhom == "No"]),
+             ci_duoi = -w$conf.int[2], ci_tren = -w$conf.int[1],    # đổi sang hiệu Left − Working
+             F = a$`F value`[1], p_F = a$`Pr(>F)`[1],
+             omega2 = (ss[1] - a$Df[1] * ms[2]) / (sum(ss) + ms[2]),
+             t = -unname(w$statistic), df_welch = unname(w$parameter), p_welch = w$p.value,
+             W_mw = unname(mw$statistic), p_mw = mw$p.value)
+}))
+tung_bien$p_F_holm     <- p.adjust(tung_bien$p_F, method = "holm")
+tung_bien$p_welch_holm <- p.adjust(tung_bien$p_welch, method = "holm")
+tung_bien$p_mw_holm    <- p.adjust(tung_bien$p_mw, method = "holm")
+```
+
+### Kết quả theo từng biến
+
+```{r bang-trung-binh}
+bang(tung_bien[, c("bien", "tb_Working", "tb_Left", "chenh", "ci_duoi", "ci_tren")], digits = 2, row.names = FALSE,
+     col.names = c("Biến", "Working", "Left", "Left − Working", "Cận dưới", "Cận trên"),
+     caption = "Trung bình và khoảng tin cậy 95% (Welch) của chênh lệch") |>
+  them_tieu_de(header = c(" " = 1, "Trung bình" = 2, " " = 1, "KTC 95%" = 2))
+```
+
+```{r bang-kiem-dinh}
+kd <- data.frame(bien = tung_bien$bien,
+                 F = tung_bien$F, p_F = fp(tung_bien$p_F_holm), omega2 = tung_bien$omega2,
+                 t = tung_bien$t, df = tung_bien$df_welch, p_welch = fp(tung_bien$p_welch_holm),
+                 W = tung_bien$W_mw, p_mw = fp(tung_bien$p_mw_holm),
+                 ket_luan = ifelse(tung_bien$p_welch_holm < 0.05, "Bác bỏ H0", "Không bác bỏ H0"))
+bang(kd, digits = 3, row.names = FALSE,
+     col.names = c("Biến", "F", "p Holm", "ω²", "t", "ν", "p Holm", "W", "p Holm", "Kết luận (Welch, 5%)"),
+     caption = "Kiểm định từng biến, p-giá trị đã hiệu chỉnh Holm qua 9 biến") |>
+  them_tieu_de(header = c(" " = 1, "ANOVA" = 3, "Welch t" = 3, "Mann-Whitney" = 2, " " = 1))
+```
+
+```{r bieu-do-chenh-lech, fig.width=10, fig.height=5}
+# Chênh lệch chuẩn hóa (Left − Working)/s_gộp với khoảng tin cậy 95%, để so sánh 9 biến trên cùng thang
+s_gop <- sapply(bien, function(v) {
+  y <- ea[[v]]; sqrt(((n1 - 1) * var(y[nhom == "No"]) + (n2 - 1) * var(y[nhom == "Yes"])) / (n - 2))
+})
+d_cd   <- tung_bien$chenh / s_gop
+d_duoi <- tung_bien$ci_duoi / s_gop
+d_tren <- tung_bien$ci_tren / s_gop
+mau <- rep(c("steelblue", "darkorange", "salmon"), times = lengths(khoi))
+par(mar = c(4.5, 13, 2, 1))
+plot(d_cd, 9:1, xlim = range(c(d_duoi, d_tren, 0)), pch = 19, col = mau, yaxt = "n",
+     xlab = "Chênh lệch chuẩn hóa (Left − Working), KTC 95%", ylab = "", main = "")
+segments(d_duoi, 9:1, d_tren, 9:1, col = mau, lwd = 2)
+axis(2, at = 9:1, labels = bien, las = 1)
+abline(v = 0, lty = 2)
+legend("bottomright", legend = names(khoi), col = c("steelblue", "darkorange", "salmon"), pch = 19, bty = "n")
+```
+
+**Nhận xét (mức ý nghĩa 5%, p-giá trị đã hiệu chỉnh Holm qua 9 biến):**
+
+- **Cả 9 biến đều khác nhau giữa hai nhóm.** Với kiểm định chính (Welch t), p-giá trị Holm của 9 biến từ 4.0e-12 đến 0.0305, đều < 0.05, nên ta bác bỏ $H_0$ với mức ý nghĩa 5% cho cả 9 biến; ANOVA một nhân tố và Mann-Whitney cho cùng kết luận. Khoảng tin cậy 95% của mọi chênh lệch đều nằm hoàn toàn bên dưới 0: nhóm Left có trung bình **thấp hơn** nhóm Working ở cả 9 biến.
+- **Thu nhập – nghề nghiệp:** thu nhập của nhóm Left thấp hơn 2046 (KTC 95%: 1508 đến 2583), tức khoảng 30% so với trung bình nhóm Working (6833); cấp bậc thấp hơn 0.51 bậc (0.37 đến 0.64).
+- **Kinh nghiệm:** tổng số năm làm việc thấp hơn 3.6 năm (2.6 đến 4.6), số năm tại công ty thấp hơn 2.2 năm (1.4 đến 3.1), số năm ở vị trí hiện tại thấp hơn 1.6 năm (1.1 đến 2.0).
+- **Tâm lý – hành vi:** hài lòng công việc và hài lòng môi trường thấp hơn khoảng 0.31 điểm, mức độ tham gia công việc thấp hơn 0.25 điểm, cân bằng công việc – cuộc sống thấp hơn 0.12 điểm (0.01 đến 0.23) trên thang 1–4. `WorkLifeBalance` là biến có khác biệt yếu nhất: p-giá trị Holm của Welch là 0.0305 và của Mann-Whitney là 0.0465, chỉ vừa dưới 0.05.
+- **Độ lớn ảnh hưởng nhỏ:** $\omega^2$ của 9 biến chỉ từ 0.003 (`WorkLifeBalance`) đến 0.029 (`TotalWorkingYears`), tức `Attrition` giải thích dưới 3% phương sai của từng biến; theo ngưỡng tham khảo của Cohen, các ảnh hưởng ở mức nhỏ. Các biến thu nhập – nghề nghiệp và kinh nghiệm có $\omega^2$ (0.017–0.029) lớn hơn các biến tâm lý – hành vi (0.003–0.016). Biểu đồ chênh lệch chuẩn hóa cho cùng thứ tự: khác biệt lớn nhất ở `TotalWorkingYears` và `JobLevel` (khoảng −0.47 độ lệch chuẩn), nhỏ nhất ở `WorkLifeBalance` (−0.17).
+
+## Kết luận câu (d)
+
+Với mức ý nghĩa 5%, sau hiệu chỉnh Holm:
+
+1. Cả **3 khối biến** đều có khác biệt đa biến giữa nhân viên đã nghỉ việc và nhân viên đang làm việc (MANOVA theo khối và bootstrap trong từng nhóm đều cho p-giá trị < 0.05).
+2. Cả **9 biến** đều có khác biệt đáng kể: nhân viên đã nghỉ việc có thu nhập, cấp bậc, tổng số năm làm việc, số năm tại công ty, số năm ở vị trí hiện tại và 4 mức hài lòng – tham gia **thấp hơn** nhân viên đang làm việc. Kết luận giống nhau ở ANOVA, Welch t và Mann-Whitney, nên không phụ thuộc vào giả định chuẩn hay phương sai bằng nhau.
+3. Khác biệt rõ nhất ở **kinh nghiệm và thu nhập – cấp bậc**; yếu nhất ở **cân bằng công việc – cuộc sống**. Độ lớn ảnh hưởng của từng biến đều nhỏ ($\omega^2 < 0.03$), phù hợp với kết quả câu (c) là hai nhóm chồng lấn nhiều.
