@@ -1,3 +1,13 @@
+---
+title: "Phân tích MANOVA hai nhân tố: Attrition và OverTime"
+author: "Trần Việt Hà"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    df_print: kable
+---
 
 ```{r setup, include=FALSE}
 options(repos = c(CRAN = "https://cloud.r-project.org"))
@@ -6,19 +16,57 @@ if (!requireNamespace("here", quietly = TRUE)) {
   install.packages("here")
 }
 
+# xác định thư mục gốc khi chạy riêng notebook
+if (identical(
+  normalizePath(knitr::current_input(dir = TRUE), mustWork = FALSE),
+  normalizePath(here::here("notebooks", "cau_f.Rmd"), mustWork = FALSE)
+)) {
+  here::i_am("notebooks/cau_f.Rmd")
+}
+
+# nạp cấu hình và dữ liệu dùng chung
 source(here::here("R", "setup.R"))
 source(here::here("R", "du_lieu.R"))
 
+# cấu hình hiển thị
 knitr::opts_chunk$set(
   echo = TRUE,
   warning = FALSE,
   message = FALSE,
   fig.align = "center"
 )
+
+# mức ý nghĩa
+f_alpha <- 0.05
+
+# hàm định dạng bảng
+f_tab <- function(x, ...) {
+  knitr::kable(x, digits = 5, row.names = FALSE, ...)
+}
+
+# hàm định dạng p-value
+f_p <- function(x) {
+  format.pval(x, digits = 4, eps = 1e-5)
+}
+
+# hàm kết luận kiểm định
+f_dec <- function(p) {
+  ifelse(p < f_alpha, "Bác bỏ H0", "Chưa bác bỏ H0")
+}
+
+# tham số cho các phép kiểm định bổ sung
+if (!exists("params")) {
+  params <- list(
+    B = 1999,
+    seed = 2026,
+    run_freedman_lane = TRUE
+  )
+}
+
+f_B <- as.integer(params$B)
+set.seed(params$seed)
 ```
 
-
-# MANOVA hai nhân tố: Attrition, OverTime và tương tác
 
 ## Mục tiêu phân tích
 

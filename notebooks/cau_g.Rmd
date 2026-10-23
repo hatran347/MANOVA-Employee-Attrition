@@ -1,5 +1,48 @@
+---
+title: "Hạn chế của MANOVA và các phương pháp thay thế"
+author: "Trần Việt Hà"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    df_print: kable
+---
 
-# Hạn chế của MANOVA và phương pháp thay thế
+```{r setup, include=FALSE}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+if (!requireNamespace("here", quietly = TRUE)) {
+  install.packages("here")
+}
+
+# xác định thư mục gốc khi chạy riêng notebook
+if (identical(
+  normalizePath(knitr::current_input(dir = TRUE), mustWork = FALSE),
+  normalizePath(here::here("notebooks", "cau_g.Rmd"), mustWork = FALSE)
+)) {
+  here::i_am("notebooks/cau_g.Rmd")
+}
+
+# nạp cấu hình và dữ liệu dùng chung
+source(here::here("R", "setup.R"))
+source(here::here("R", "du_lieu.R"))
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+
+# kiểm tra package cho nonparametric manova
+if (!requireNamespace("nparMD", quietly = TRUE)) {
+  stop("Cần cài đặt package nparMD để thực hiện câu (g).")
+}
+
+set.seed(2026)
+```
+
 
 ## Hạn chế của MANOVA
 
