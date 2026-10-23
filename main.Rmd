@@ -1,0 +1,73 @@
+---
+title: "BÁO CÁO PHÂN TÍCH THỐNG KÊ NHIỀU CHIỀU"
+subtitle: "Phân tích dữ liệu Employee Attrition"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+
+```{r setup-main, include=FALSE}
+options(knitr.duplicate.label = "allow")
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  fig.width = 10,
+  fig.height = 7,
+  cache = FALSE
+)
+
+source("R/setup.R")
+source("R/du_lieu.R")
+
+# cau hinh chung
+set.seed(2026)
+
+# cau hinh rieng cho cau f
+f_alpha <- 0.05
+f_tab <- function(x, ...) knitr::kable(
+  x, digits = 5, row.names = FALSE, ...
+)
+f_p <- function(x) format.pval(x, digits = 4, eps = 1e-5)
+f_dec <- function(p) ifelse(p < f_alpha, "Bác bỏ H0", "Chưa bác bỏ H0")
+
+# tham so neu cac chunk cau f con su dung
+if (!exists("params")) {
+  params <- list(
+    B = 1999,
+    seed = 2026,
+    run_freedman_lane = TRUE
+  )
+}
+
+f_B <- as.integer(params$B)
+```
+
+```
+
+```{r cau-a, child="notebooks/cau_a.Rmd"}
+```
+
+```{r cau-b, child="notebooks/cau_b.Rmd"}
+```
+
+```{r cau-c, child="notebooks/cau_c.Rmd"}
+```
+
+```{r cau-d, child="notebooks/cau_d.Rmd"}
+```
+
+```{r cau-e, child="notebooks/cau_e.Rmd"}
+```
+
+```{r cau-f, child="notebooks/cau_f.Rmd"}
+```
+
+```{r cau-g, child="notebooks/cau_g.Rmd"}
+```

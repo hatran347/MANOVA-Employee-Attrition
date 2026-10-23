@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ---
 title: "MANOVA hai nhân tố: Attrition, OverTime và tương tác"
 output: html_document
@@ -10,20 +11,680 @@ here::i_am("notebooks/cau_f.Rmd")   # xác định thư mục gốc project khi 
 source(here::here("R", "setup.R"))
 source(here::here("R", "du_lieu.R"))   # ea, Y (4 biến tâm lý – hành vi), bien_tl, o (4 cặp Working-NoOT, Left-NoOT, Working-OT, Left-OT)
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = "center")
+=======
+# MANOVA hai nhân tố: Attrition, OverTime và tương tác
+
+## Mục tiêu phân tích
+
+Trong câu (f), mô hình phân tích phương sai đa biến hai nhân tố (Two-way
+MANOVA) được sử dụng nhằm đánh giá sự khác biệt đồng thời về các đặc
+điểm tâm lý – hành vi của nhân viên theo hai yếu tố:
+
+- **Attrition:** Tình trạng nghỉ việc (No: đang làm việc; Yes: đã nghỉ
+  việc).
+- **OverTime:** Tình trạng làm thêm giờ (No: không làm thêm giờ; Yes: có
+  làm thêm giờ).
+
+Vectơ biến phụ thuộc gồm bốn biến: `JobSatisfaction`,
+`EnvironmentSatisfaction`, `WorkLifeBalance` và `JobInvolvement`.
+
+Phân tích tập trung đánh giá ba hiệu ứng: **hiệu ứng chính của
+Attrition, hiệu ứng chính của OverTime và hiệu ứng tương tác Attrition ×
+OverTime** đối với vectơ trung bình của bốn biến tâm lý – hành vi.
+
+Các kiểm định được thực hiện ở mức ý nghĩa $\alpha=0.05$. Bốn biến phụ
+thuộc được xem như biến định lượng trong mô hình MANOVA, mặc dù được đo
+trên thang thứ bậc từ 1 đến 4. Kết quả được diễn giải dưới góc độ mối
+liên hệ thống kê, không hàm ý quan hệ nhân quả.
+
+## Mô hình MANOVA hai nhân tố và giả thuyết kiểm định
+
+### Thiết lập mô hình
+
+Xét hai nhân tố:
+
+- $A$: Tình trạng nghỉ việc (`Attrition`), gồm hai mức No và Yes.
+- $B$: Tình trạng làm thêm giờ (`OverTime`), gồm hai mức No và Yes.
+
+Đặt $i,j\in\{0,1\}$, trong đó 0 tương ứng với No và 1 tương ứng với Yes.
+
+Với nhân viên thứ $k$ thuộc nhóm $(i,j)$, mô hình MANOVA hai nhân tố có
+tương tác được viết dưới dạng:
+
+$$\boxed{
+\mathbf Y_{ijk}
+=
+\boldsymbol\mu
++
+\boldsymbol\alpha_i
++
+\boldsymbol\beta_j
++
+\boldsymbol\gamma_{ij}
++
+\boldsymbol\varepsilon_{ijk}
+}$$
+
+Trong đó:
+
+- $\mathbf Y_{ijk}$: vectơ gồm bốn biến tâm lý – hành vi của nhân viên.
+- $\boldsymbol\mu$: vectơ trung bình chung.
+- $\boldsymbol\alpha_i$: hiệu ứng của nhân tố Attrition tại mức $i$.
+- $\boldsymbol\beta_j$: hiệu ứng của nhân tố OverTime tại mức $j$.
+- $\boldsymbol\gamma_{ij}$: hiệu ứng tương tác giữa Attrition và
+  OverTime.
+- $\boldsymbol\varepsilon_{ijk}$: vectơ sai số ngẫu nhiên.
+
+Các thành phần trên đều là vectơ bốn chiều. Để mô hình được xác định duy
+nhất, sử dụng các ràng buộc:
+
+$$\sum_i\boldsymbol\alpha_i=\mathbf0,\qquad
+\sum_j\boldsymbol\beta_j=\mathbf0,$$
+
+$$\sum_i\boldsymbol\gamma_{ij}=\mathbf0,\qquad
+\sum_j\boldsymbol\gamma_{ij}=\mathbf0.$$
+
+Trong mô hình MANOVA cổ điển, giả định rằng các vectơ sai số độc lập và
+có cùng phân phối:
+
+$$\boldsymbol\varepsilon_{ijk}
+\sim N_4(\mathbf0,\boldsymbol\Sigma),$$
+
+với $\boldsymbol\Sigma$ là ma trận hiệp phương sai chung, xác định
+dương.
+
+### Giả thuyết kiểm định
+
+Gọi $\mathbf m_{ij}=E(\mathbf Y\mid A=i,B=j)$ là vectơ trung bình của
+bốn biến phụ thuộc tại nhóm $(i,j)$.
+
+Với cách xác định hiệu ứng chính bằng trung bình biên trọng số bằng
+nhau, ta xét ba giả thuyết:
+
+**a) Hiệu ứng chính của Attrition**
+
+$$H_{0A}:
+\frac{\mathbf m_{00}+\mathbf m_{01}}{2}
+=
+\frac{\mathbf m_{10}+\mathbf m_{11}}{2}.$$
+
+$$H_{1A}:
+\frac{\mathbf m_{00}+\mathbf m_{01}}{2}
+\neq
+\frac{\mathbf m_{10}+\mathbf m_{11}}{2}.$$
+
+Giả thuyết này kiểm tra liệu vectơ trung bình tâm lý – hành vi có khác
+biệt theo tình trạng nghỉ việc, sau khi lấy trung bình đều qua hai mức
+OverTime, hay không.
+
+**b) Hiệu ứng chính của OverTime**
+
+$$H_{0B}:
+\frac{\mathbf m_{00}+\mathbf m_{10}}{2}
+=
+\frac{\mathbf m_{01}+\mathbf m_{11}}{2}.$$
+
+$$H_{1B}:
+\frac{\mathbf m_{00}+\mathbf m_{10}}{2}
+\neq
+\frac{\mathbf m_{01}+\mathbf m_{11}}{2}.$$
+
+Giả thuyết này kiểm tra liệu vectơ trung bình tâm lý – hành vi có khác
+biệt theo tình trạng làm thêm giờ, sau khi lấy trung bình đều qua hai
+mức Attrition, hay không.
+
+**c) Hiệu ứng tương tác Attrition × OverTime**
+
+$$H_{0AB}:
+(\mathbf m_{11}-\mathbf m_{10})
+-
+(\mathbf m_{01}-\mathbf m_{00})
+=\mathbf0.$$
+
+$$H_{1AB}:
+(\mathbf m_{11}-\mathbf m_{10})
+-
+(\mathbf m_{01}-\mathbf m_{00})
+\neq\mathbf0.$$
+
+Giả thuyết này kiểm tra liệu sự khác biệt về vectơ trung bình theo
+Attrition có thay đổi giữa hai mức OverTime hay không.
+
+Các giả thuyết được kiểm định ở mức ý nghĩa $\alpha=0.05$. Do dữ liệu có
+thiết kế không cân bằng, phân tích sử dụng tổng bình phương loại III
+(Type III) với mã hóa `contr.sum` để kiểm định các hiệu ứng theo định
+nghĩa trung bình biên nêu trên.
+
+
+## Thống kê mô tả theo hai nhân tố
+
+Hai nhân tố Attrition và OverTime đều có hai mức No và Yes, tạo thành bốn nhóm nhân viên. Trước khi thực hiện MANOVA hai nhân tố, tiến hành thống kê số lượng quan sát và trung bình của bốn biến tâm lý – hành vi trong từng nhóm.
+
+```{r f-data-validation}
+# khai báo các biến phụ thuộc
+f_vars <- c(
+  "JobSatisfaction",
+  "EnvironmentSatisfaction",
+  "WorkLifeBalance",
+  "JobInvolvement"
+)
+
+# chuẩn bị dữ liệu
+f_dat <- ea[, c("Attrition", "OverTime", f_vars)]
+
+f_dat$Attrition <- factor(f_dat$Attrition, levels = c("No", "Yes"))
+f_dat$OverTime <- factor(f_dat$OverTime, levels = c("No", "Yes"))
+
+# kiểm tra dữ liệu đầu vào
+stopifnot(
+  !anyNA(f_dat),
+  all(vapply(f_dat[f_vars], is.numeric, logical(1))),
+  all(as.matrix(f_dat[f_vars]) %in% 1:4)
+)
+
+# thiết lập contrasts cho manova type iii
+contrasts(f_dat$Attrition) <- contr.sum(2)
+contrasts(f_dat$OverTime) <- contr.sum(2)
+
+# tạo các đối tượng phục vụ phân tích manova
+f_Y <- as.matrix(f_dat[f_vars])
+f_X <- model.matrix(~ Attrition * OverTime, data = f_dat)
+
+f_grid <- expand.grid(
+  Attrition = c("No", "Yes"),
+  OverTime = c("No", "Yes")
+)
+
+f_grid$Attrition <- factor(f_grid$Attrition, levels = c("No", "Yes"))
+f_grid$OverTime <- factor(f_grid$OverTime, levels = c("No", "Yes"))
+
+f_G <- model.matrix(
+  ~ Attrition * OverTime,
+  data = f_grid,
+  contrasts.arg = list(
+    Attrition = contr.sum(2),
+    OverTime = contr.sum(2)
+  )
+)
+
+# phân chia dữ liệu thành bốn nhóm
+f_cell <- interaction(
+  f_dat$Attrition,
+  f_dat$OverTime,
+  sep = "."
+)
+
+f_idx <- lapply(
+  levels(f_cell),
+  function(g) which(f_cell == g)
+)
+
+f_n <- lengths(f_idx)
+
+stopifnot(all(f_n > 4), qr(f_X)$rank == 4)
+
+# tính trung bình bốn biến phụ thuộc theo nhóm
+f_mu <- t(vapply(
+  f_idx,
+  function(ii) colMeans(f_Y[ii, , drop = FALSE]),
+  numeric(length(f_vars))
+))
+
+colnames(f_mu) <- f_vars
+
+f_summary <- data.frame(
+  Attrition = f_grid$Attrition,
+  OverTime = f_grid$OverTime,
+  n = f_n,
+  f_mu,
+  check.names = FALSE
+)
+
+knitr::kable(
+  f_summary,
+  digits = 3,
+  caption = "Cỡ mẫu và trung bình các biến tâm lý – hành vi theo hai nhân tố"
+)
+>>>>>>> 9260c87 (Add main report and questions f g)
 ```
 
-## Mục tiêu
+Bảng trên trình bày số lượng nhân viên và trung bình của bốn biến phụ thuộc tại từng tổ hợp Attrition × OverTime.
 
-MANOVA hai nhân tố: Attrition, OverTime và tương tác, trên vectơ 4 biến tâm lý – hành vi (`Y`).
+Để quan sát sơ bộ hiệu ứng tương tác, sử dụng biểu đồ tương tác cho từng biến phụ thuộc.
 
+<<<<<<< HEAD
 Thống kê mô tả theo cặp, biểu đồ tương tác và toàn bộ kiểm tra giả định cho mô hình hai nhân tố (ngoại lai, chuẩn từng biến, chuẩn nhiều chiều, tương quan/VIF, Box's M, Levene) đã thực hiện ở mục 3, mục "hai nhân tố". Mục này bắt đầu từ mô hình và kiểm định MANOVA hai nhân tố.
+=======
+```{r f-interaction-plot, fig.width=11, fig.height=8}
+local({
+  old_par <- par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+  on.exit(par(old_par))
+>>>>>>> 9260c87 (Add main report and questions f g)
 
-## Phân tích
-
-```{r}
-# bổ sung code r tại đây
+  for (v in f_vars) {
+    interaction.plot(
+      x.factor = f_dat$OverTime,
+      trace.factor = f_dat$Attrition,
+      response = f_dat[[v]],
+      type = "b",
+      pch = c(16, 17),
+      col = c("steelblue", "tomato"),
+      lwd = 2,
+      xlab = "OverTime",
+      ylab = "Trung bình",
+      trace.label = "Attrition",
+      main = v
+    )
+  }
+})
 ```
 
-## Kết quả và nhận xét
+**Nhận xét:** Biểu đồ cho thấy nhóm nhân viên ở lại (Attrition = No) có điểm trung bình cao hơn nhóm nghỉ việc (Attrition = Yes) ở cả bốn biến tâm lý – hành vi, đặc biệt là JobSatisfaction, EnvironmentSatisfaction và JobInvolvement.
 
-Viết kết quả kiểm định, cách diễn giải và kết luận tại đây.
+Các đường biểu diễn tương đối song song ở ba biến trên, trong khi WorkLifeBalance có dấu hiệu tương tác giữa Attrition và OverTime rõ hơn. Tuy nhiên, đây chỉ là nhận xét mô tả; cần kiểm định MANOVA hai nhân tố để kết luận về ý nghĩa thống kê.
+
+## Đối chiếu các giả định của MANOVA hai nhân tố
+
+Các giả định của MANOVA hai nhân tố đã được kiểm tra ở câu (b) đối với bốn nhóm được xác định bởi Attrition × OverTime. Kết quả được tóm tắt như sau:
+
+| Giả định | Kết quả kiểm tra | Nhận xét |
+|---|---|---|
+| Chuẩn đa biến | Shapiro–Wilk bác bỏ giả thuyết chuẩn ở 3/4 nhóm | Giả định chuẩn đa biến không được đáp ứng đầy đủ |
+| Đồng nhất ma trận hiệp phương sai | Box's M có p ≈ 0.00379 | Bác bỏ giả thuyết các ma trận hiệp phương sai bằng nhau |
+| Đồng nhất phương sai từng biến | Levene có p < 0.05 ở 3/4 biến | Có bằng chứng phương sai khác nhau ở một số biến |
+| Độc lập quan sát | Mỗi dòng dữ liệu tương ứng một nhân viên | Cần dựa vào thiết kế thu thập dữ liệu để bảo đảm giả định độc lập |
+
+Ngoài ra, bốn biến phụ thuộc được đo trên thang thứ bậc từ 1 đến 4. Vì vậy, giả định phân phối chuẩn liên tục không thể được thỏa mãn chính xác.
+
+Nhìn chung, dữ liệu chưa đáp ứng đầy đủ các giả định của MANOVA cổ điển, đặc biệt là chuẩn đa biến và đồng nhất ma trận hiệp phương sai. Sự mất cân bằng về cỡ mẫu giữa bốn nhóm cũng làm tăng mức độ cần thận trọng khi diễn giải kết quả.
+
+Trong phần tiếp theo, mô hình MANOVA hai nhân tố vẫn được thực hiện để đánh giá ba hiệu ứng Attrition, OverTime và Attrition × OverTime theo yêu cầu phân tích. Pillai's Trace được ưu tiên báo cáo, kết hợp với Wilks' Lambda để đối chiếu. Các kết luận thống kê sẽ được xem xét trong bối cảnh những hạn chế về giả định đã nêu.
+
+
+## Kiểm định MANOVA hai nhân tố
+
+Để đánh giá sự khác biệt đồng thời của bốn biến tâm lý – hành vi theo hai nhân tố `Attrition` và `OverTime`, sử dụng mô hình MANOVA hai nhân tố có tương tác:
+
+$$
+\mathbf Y_{ijk}
+=
+\boldsymbol\mu
++
+\boldsymbol\alpha_i
++
+\boldsymbol\beta_j
++
+\boldsymbol\gamma_{ij}
++
+\boldsymbol\varepsilon_{ijk}.
+$$
+
+Ba giả thuyết tương ứng với hiệu ứng chính của `Attrition`, hiệu ứng chính của `OverTime` và hiệu ứng tương tác `Attrition × OverTime` đã được thiết lập ở mục 2.
+
+Trong MANOVA, đặt:
+
+- $\mathbf E$: ma trận tổng bình phương và tích chéo sai số (Error SSCP).
+- $\mathbf H$: ma trận tổng bình phương và tích chéo của hiệu ứng đang kiểm định (Hypothesis SSCP).
+
+Hai thống kê kiểm định được sử dụng gồm:
+
+**Wilks' Lambda:**
+
+$$
+\Lambda=\frac{|\mathbf E|}{|\mathbf E+\mathbf H|}.
+$$
+
+**Pillai's Trace:**
+
+$$
+V=\operatorname{tr}\left[\mathbf H(\mathbf H+\mathbf E)^{-1}\right].
+$$
+
+Giá trị Wilks' Lambda càng nhỏ hoặc Pillai's Trace càng lớn cho thấy bằng chứng chống lại giả thuyết $H_0$ càng mạnh. Quyết định kiểm định được đưa ra dựa trên p-value tại mức ý nghĩa $\alpha=0.05$.
+
+Do cỡ mẫu giữa bốn nhóm không cân bằng, sử dụng tổng bình phương loại III (Type III) với mã hóa `contr.sum` để kiểm định các hiệu ứng theo trung bình biên trọng số bằng nhau. Pillai's Trace được ưu tiên diễn giải và Wilks' Lambda được sử dụng để đối chiếu.
+
+**Thực hiện kiểm định MANOVA**
+
+```{r f-manova-type3}
+# xây dựng mô hình manova hai nhân tố
+f_fit <- lm(
+  cbind(
+    JobSatisfaction,
+    EnvironmentSatisfaction,
+    WorkLifeBalance,
+    JobInvolvement
+  ) ~ Attrition * OverTime,
+  data = f_dat
+)
+
+# kiểm định manova type iii
+f_manova <- car::Manova(f_fit, type = "III")
+
+# kiểm định bằng pillai's trace
+f_pillai <- summary(
+  f_manova,
+  multivariate = TRUE,
+  test.statistic = "Pillai"
+)
+
+f_pillai
+
+# kiểm định bằng wilks' lambda
+f_wilks <- summary(
+  f_manova,
+  multivariate = TRUE,
+  test.statistic = "Wilks"
+)
+
+f_wilks
+```
+
+**Nhận xét kết quả MANOVA hai nhân tố**
+
+Kết quả MANOVA Type III cho thấy cả Attrition (Pillai = 0.05027; F(4,1463) = 19.360; p < 0.001) và OverTime (Pillai = 0.01042; F(4,1463) = 3.852; p = 0.00405) đều có ý nghĩa thống kê ở mức 5%. Điều này cho thấy sự khác biệt đa biến về các đặc điểm tâm lý – hành vi theo hai nhân tố.
+
+Ngược lại, hiệu ứng tương tác Attrition × OverTime không có ý nghĩa thống kê (Pillai = 0.00087; F(4,1463) = 0.317; p = 0.86689). Do đó, chưa có đủ bằng chứng về sự tồn tại của hiệu ứng tương tác đa biến giữa hai nhân tố.
+
+Các kết luận được diễn giải thận trọng do một số giả định của MANOVA cổ điển chưa được đáp ứng đầy đủ.
+
+
+
+
+## Phân tích sau MANOVA hai nhân tố
+
+Kết quả MANOVA Type III ở mục 5 cho thấy hiệu ứng chính của `Attrition` và `OverTime` có ý nghĩa thống kê đối với vectơ bốn biến tâm lý – hành vi. Ngược lại, hiệu ứng tương tác `Attrition × OverTime` không có ý nghĩa thống kê ở mức 5%.
+
+Tuy nhiên, MANOVA chỉ kiểm định sự khác biệt của toàn bộ vectơ trung bình, chưa xác định biến phụ thuộc cụ thể nào có khác biệt. Vì vậy, phần này tiếp tục phân tích từng biến bằng ANOVA hai nhân tố, sau đó ước lượng trung bình biên và các chênh lệch trung bình.
+
+### ANOVA hai nhân tố cho từng biến phụ thuộc
+
+Với mỗi biến phụ thuộc $Y$, xét mô hình:
+
+$$
+Y_{ijk}
+=
+\mu+\alpha_i+\beta_j+(\alpha\beta)_{ij}+\varepsilon_{ijk}.
+$$
+
+Các giả thuyết kiểm định bao gồm:
+
+- $H_{0A}$: Không có hiệu ứng chính của `Attrition`.
+- $H_{0B}$: Không có hiệu ứng chính của `OverTime`.
+- $H_{0AB}$: Không có hiệu ứng tương tác `Attrition × OverTime`.
+
+Thống kê kiểm định ANOVA được xác định bởi:
+
+$$
+F=\frac{SS_H/df_H}{SS_E/df_E},
+$$
+
+trong đó $SS_H$ là tổng bình phương của hiệu ứng đang xét và $SS_E$ là tổng bình phương sai số.
+
+Đồng thời, sử dụng hệ số partial eta-squared để đánh giá độ lớn hiệu ứng:
+
+$$
+\eta_p^2=\frac{SS_H}{SS_H+SS_E}.
+$$
+
+Phân tích sử dụng ANOVA Type III với cùng cách mã hóa nhân tố như MANOVA ở mục 5.
+
+```{r f-post-manova-anova}
+# anova hai nhân tố cho từng biến phụ thuộc
+f_anova_models <- lapply(f_vars, function(v) {
+  formula <- reformulate("Attrition * OverTime", response = v)
+  lm(formula, data = f_dat)
+})
+
+names(f_anova_models) <- f_vars
+
+# trích xuất kết quả anova type iii
+effects <- c("Attrition", "OverTime", "Attrition:OverTime")
+
+f_anova_results <- do.call(rbind, lapply(f_vars, function(v) {
+  fit <- f_anova_models[[v]]
+  tab <- as.data.frame(car::Anova(fit, type = "III"))
+  ss_error <- sum(residuals(fit)^2)
+
+  data.frame(
+    Variable = v,
+    Effect = effects,
+    Df = tab[effects, "Df"],
+    F = tab[effects, "F value"],
+    p_value = tab[effects, "Pr(>F)"],
+    Partial_Eta2 = tab[effects, "Sum Sq"] /
+      (tab[effects, "Sum Sq"] + ss_error),
+    row.names = NULL
+  )
+}))
+
+# kết luận dựa trên p-value gốc
+f_anova_results$Conclusion <- ifelse(
+  f_anova_results$p_value < 0.05,
+  "Có ý nghĩa",
+  "Không có ý nghĩa"
+)
+
+# sắp xếp kết quả theo từng hiệu ứng
+f_anova_results <- f_anova_results[
+  order(match(f_anova_results$Effect, effects)),
+]
+
+rownames(f_anova_results) <- NULL
+
+# hiển thị bảng kết quả
+knitr::kable(
+  f_anova_results,
+  digits = 5,
+  caption = "Kết quả ANOVA hai nhân tố cho từng biến phụ thuộc"
+)
+```
+
+
+**Đánh giá kết quả ANOVAĐ**
+
+Kết quả ANOVA hai nhân tố được đánh giá dựa trên thống kê F, p-value và partial eta-squared ($\eta_p^2$), với mức ý nghĩa $\alpha = 0.05$. Các p-value được sử dụng trực tiếp từ ANOVA Type III
+
+```{r f-anova-interpretation, results='asis'}
+for (effect in c("Attrition", "OverTime", "Attrition:OverTime")) {
+  z <- f_anova_results[
+    f_anova_results$Effect == effect,
+  ]
+
+  significant <- z$Variable[z$p_value < 0.05]
+
+  cat("\n\n**", effect, ":** ", sep = "")
+
+  if (length(significant) > 0) {
+    cat(
+      "Các biến có ý nghĩa thống kê gồm: ",
+      paste(significant, collapse = ", "),
+      ".",
+      sep = ""
+    )
+  } else {
+    cat(
+      "Không có biến phụ thuộc nào có ý nghĩa thống kê ",
+      "ở mức 5%."
+    )
+  }
+}
+```
+
+**Nhận xét:** Kết quả cho thấy `Attrition` có ý nghĩa thống kê đối với cả bốn biến tâm lý – hành vi. Trong khi đó, `OverTime` chỉ có ý nghĩa thống kê đối với `EnvironmentSatisfaction`. Không phát hiện hiệu ứng tương tác `Attrition × OverTime` có ý nghĩa thống kê ở bất kỳ biến phụ thuộc nào.
+
+Xét về độ lớn hiệu ứng, các giá trị partial eta-squared đều nhỏ. Đối với `Attrition`, `JobInvolvement` có giá trị lớn nhất ($\eta_p^2 = 0.01761$), tiếp theo là `EnvironmentSatisfaction` ($0.01550$), `JobSatisfaction` ($0.01258$) và `WorkLifeBalance` ($0.00333$). Điều này cho thấy các khác biệt có ý nghĩa thống kê nhưng độ lớn hiệu ứng còn hạn chế.
+
+Do thực hiện nhiều kiểm định đơn biến mà không hiệu chỉnh p-value, kết quả cần được diễn giải thận trọng về nguy cơ sai lầm loại I.
+
+
+### Phân tích trung bình biên ước lượng
+
+Do số lượng quan sát giữa bốn nhóm không bằng nhau, sử dụng trung bình biên ước lượng (Estimated Marginal Means – EMM) để so sánh các mức của từng nhân tố.
+
+EMM được tính bằng cách lấy trung bình đều qua các mức của nhân tố còn lại, nhất quán với các giả thuyết Type III đã xác định.
+
+Đối với `Attrition`:
+
+$$
+\overline{\boldsymbol\mu}_{A=i}
+=
+\frac{\boldsymbol\mu_{i0}+\boldsymbol\mu_{i1}}{2}.
+$$
+
+Đối với `OverTime`:
+
+$$
+\overline{\boldsymbol\mu}_{B=j}
+=
+\frac{\boldsymbol\mu_{0j}+\boldsymbol\mu_{1j}}{2}.
+$$
+
+Vì mỗi nhân tố chỉ có hai mức No và Yes, phân tích tập trung vào một chênh lệch trung bình Yes − No cho mỗi nhân tố và từng biến phụ thuộc.
+
+```{r f-post-manova-emmeans}
+# kiểm tra package
+if (!requireNamespace("emmeans", quietly = TRUE)) {
+  stop("Cần cài đặt package emmeans để thực hiện mục 6.3.")
+}
+
+# tính emm và chênh lệch trung bình yes - no
+f_emm_summary <- list()
+f_emm_contrasts <- list()
+
+for (v in f_vars) {
+  fit <- f_anova_models[[v]]
+
+  for (effect in c("Attrition", "OverTime")) {
+    emm <- emmeans::emmeans(
+      fit,
+      specs = effect,
+      weights = "equal"
+    )
+
+    means <- as.data.frame(
+      summary(emm, infer = c(TRUE, FALSE))
+    )
+
+    means$Variable <- v
+    means$Effect <- effect
+    means$Level <- as.character(means[[effect]])
+
+    f_emm_summary[[paste(v, effect, sep = "_")]] <-
+      means[, c(
+        "Variable", "Effect", "Level",
+        "emmean", "SE", "lower.CL", "upper.CL"
+      )]
+
+    # chênh lệch trung bình yes - no
+    comparison <- emmeans::contrast(
+      emm,
+      method = list("Yes - No" = c(-1, 1))
+    )
+
+    comparisons <- as.data.frame(
+      summary(comparison, infer = c(TRUE, TRUE))
+    )
+
+    comparisons$Variable <- v
+    comparisons$Effect <- effect
+
+    f_emm_contrasts[[paste(v, effect, sep = "_")]] <-
+      comparisons[, c(
+        "Variable", "Effect", "contrast",
+        "estimate", "SE", "df",
+        "lower.CL", "upper.CL", "p.value"
+      )]
+  }
+}
+
+# tổng hợp kết quả
+f_emm_table <- do.call(rbind, f_emm_summary)
+f_contrast_table <- do.call(rbind, f_emm_contrasts)
+
+rownames(f_emm_table) <- NULL
+rownames(f_contrast_table) <- NULL
+
+# bảng trung bình biên ước lượng
+knitr::kable(
+  f_emm_table,
+  digits = 4,
+  caption = "Trung bình biên ước lượng và khoảng tin cậy 95%"
+)
+
+# bảng chênh lệch trung bình và p-value gốc
+knitr::kable(
+  f_contrast_table,
+  digits = 5,
+  caption = "Chênh lệch trung bình Yes - No theo từng nhân tố"
+)
+```
+
+### Diễn giải chênh lệch trung bình
+
+Trong bảng so sánh EMM, chênh lệch được xác định theo quy ước:
+
+$$
+\Delta=\operatorname{EMM}_{Yes}-\operatorname{EMM}_{No}.
+$$
+
+Ý nghĩa của dấu chênh lệch:
+
+- $\Delta>0$: Nhóm Yes có điểm trung bình biên cao hơn nhóm No.
+- $\Delta<0$: Nhóm Yes có điểm trung bình biên thấp hơn nhóm No.
+
+Khoảng tin cậy 95% được sử dụng để đánh giá độ bất định của chênh lệch ước lượng. Các khoảng tin cậy trong bảng là khoảng riêng lẻ, chưa hiệu chỉnh đồng thời cho nhiều phép so sánh; kết luận ý nghĩa thống kê dựa trên p-value Holm.
+
+### Đánh giá hiệu ứng tương tác
+
+Kết quả MANOVA hai nhân tố không phát hiện hiệu ứng tương tác đa biến có ý nghĩa thống kê giữa Attrition và OverTime (p = 0.86689). Tương tự, kết quả ANOVA hai nhân tố cho thấy hiệu ứng tương tác không có ý nghĩa thống kê đối với cả bốn biến tâm lý – hành vi (p > 0.05).
+
+Do đó, chưa có đủ bằng chứng thống kê về sự tồn tại của hiệu ứng tương tác giữa hai nhân tố và không cần thực hiện thêm các so sánh hiệu ứng đơn trong phạm vi phân tích này.
+
+Để hỗ trợ so sánh các mức của hai nhân tố, biểu diễn EMM và khoảng tin cậy 95% của từng biến phụ thuộc.
+
+```{r f-emm-plot, fig.width=11, fig.height=8}
+library(ggplot2)
+
+ggplot(
+  f_emm_table,
+  aes(
+    x = Level,
+    y = emmean,
+    color = Effect
+  )
+) +
+  geom_point(size = 2.5) +
+  geom_errorbar(
+    aes(
+      ymin = lower.CL,
+      ymax = upper.CL
+    ),
+    width = 0.12,
+    linewidth = 0.6
+  ) +
+  facet_grid(Variable ~ Effect, scales = "free_y") +
+  labs(
+    title = "Trung bình biên ước lượng theo Attrition và OverTime",
+    x = "Nhóm",
+    y = "Trung bình biên ước lượng (EMM)",
+    color = "Nhân tố"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    legend.position = "none",
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(face = "bold")
+  )
+```
+
+
+## Tổng hợp và kết luận
+
+Kết quả MANOVA hai nhân tố (Type III) cho thấy cả **Attrition** (Pillai = 0.05027; $F(4,1463)=19.360$; $p<0.001$) và **OverTime** (Pillai = 0.01042; $F(4,1463)=3.852$; $p=0.00405$) đều có ý nghĩa thống kê đối với vectơ bốn biến tâm lý – hành vi. Ngược lại, hiệu ứng tương tác **Attrition × OverTime** không có ý nghĩa thống kê ($p=0.86689$).
+
+Phân tích ANOVA hai nhân tố cho thấy **Attrition có ý nghĩa thống kê đối với cả bốn biến phụ thuộc**, trong khi **OverTime chỉ có ý nghĩa đối với EnvironmentSatisfaction**. Không phát hiện hiệu ứng tương tác có ý nghĩa thống kê ở bất kỳ biến phụ thuộc nào.
+
+Kết quả EMM cho thấy nhóm nhân viên ở lại có điểm trung bình biên cao hơn nhóm nghỉ việc ở cả bốn biến tâm lý – hành vi. Đối với OverTime, nhóm làm thêm giờ có mức EnvironmentSatisfaction cao hơn nhóm không làm thêm khoảng 0.25 điểm ($p=0.00167$).
+
+**Nhìn chung**, tình trạng nghỉ việc và làm thêm giờ có liên hệ thống kê với sự khác biệt đa biến về tâm lý – hành vi của nhân viên, nhưng chưa có đủ bằng chứng về hiệu ứng tương tác giữa hai nhân tố. Tuy nhiên, độ lớn các hiệu ứng đơn biến tương đối nhỏ và một số giả định của MANOVA cổ điển chưa được đáp ứng đầy đủ. Vì vậy, kết quả cần được diễn giải thận trọng và không hàm ý quan hệ nhân quả.
