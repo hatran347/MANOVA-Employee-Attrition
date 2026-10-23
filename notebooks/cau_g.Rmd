@@ -1,69 +1,59 @@
-<<<<<<< HEAD
----
-title: "Hạn chế của MANOVA và phương pháp thay thế"
-output: html_document
----
-=======
+
 # Hạn chế của MANOVA và phương pháp thay thế
-## Hạn chế của MANOVA và phương pháp thay thế
->>>>>>> 9260c87 (Add main report and questions f g)
 
-###  Nhận xét và hạn chế của MANOVA
+## Hạn chế của MANOVA
 
-Trong các câu trước, MANOVA được sử dụng để kiểm định sự khác biệt đa biến giữa các nhóm nhân viên. Câu (c) xét nhân tố Attrition với 9 biến phụ thuộc, trong khi câu (f) phân tích đồng thời Attrition và OverTime trên 4 biến tâm lý – hành vi.
+Ở câu (c), MANOVA một nhân tố được sử dụng để kiểm định sự khác biệt giữa hai nhóm nhân viên theo `Attrition` trên chín biến phụ thuộc. Kết quả Wilks' Lambda và Pillai's Trace đều bác bỏ giả thuyết hai vectơ trung bình bằng nhau ($p<0.001$). Ở câu (f), MANOVA hai nhân tố tiếp tục cho thấy hiệu ứng chính của `Attrition` và `OverTime` có ý nghĩa thống kê, trong khi tương tác giữa hai nhân tố không có ý nghĩa.
 
-Kết quả MANOVA cho thấy có sự khác biệt đa biến có ý nghĩa thống kê giữa các nhóm. Tuy nhiên, một số vấn đề cần được lưu ý khi diễn giải kết quả.
+Tuy nhiên, việc áp dụng MANOVA cổ điển cho dữ liệu này còn một số hạn chế.
 
-**Giả định phân phối và hiệp phương sai.** Các kiểm định ở câu (b) cho thấy dữ liệu chưa đáp ứng đầy đủ giả định chuẩn đa biến và đồng nhất ma trận hiệp phương sai. Riêng thiết kế hai nhân tố, kiểm định chuẩn đa biến bác bỏ giả thuyết ở 3/4 nhóm, trong khi Box's M cho p ≈ 0.00379. Cỡ mẫu giữa bốn nhóm cũng không cân bằng, dao động từ 110 đến 944 quan sát. Điều này có thể ảnh hưởng đến độ tin cậy của xấp xỉ kiểm định MANOVA cổ điển.
+**Giả định phân phối và hiệp phương sai.** Kết quả kiểm tra ở câu (b) cho thấy giả định chuẩn đa biến chưa được đáp ứng đầy đủ. Đối với thiết kế hai nhân tố, kiểm định chuẩn đa biến bác bỏ giả thuyết ở 3/4 nhóm; kiểm định Box's M cho $p\approx0.00379$ và Levene có ý nghĩa ở 3/4 biến. Ngoài ra, cỡ mẫu giữa bốn nhóm không cân bằng, dao động từ 110 đến 944 quan sát. Những yếu tố này có thể ảnh hưởng đến kết quả suy luận của MANOVA cổ điển.
 
-**Bản chất thang đo.** Bốn biến JobSatisfaction, EnvironmentSatisfaction, WorkLifeBalance và JobInvolvement nhận giá trị từ 1 đến 4, có tính thứ bậc. Trong khi đó, MANOVA sử dụng trung bình và hiệp phương sai nên việc xem các mức điểm như những đại lượng định lượng có thể chưa phản ánh đầy đủ bản chất dữ liệu.
+**Bản chất thang đo.** Bốn biến `JobSatisfaction`, `EnvironmentSatisfaction`, `WorkLifeBalance` và `JobInvolvement` đều nhận giá trị từ 1 đến 4, mang tính thứ bậc. Trong khi đó, MANOVA sử dụng trung bình và hiệp phương sai, nên việc xem các mức điểm này như dữ liệu định lượng có thể chưa phản ánh đầy đủ bản chất thang đo.
 
-**Ý nghĩa thống kê và ý nghĩa thực tiễn.** Ở câu (c), kiểm định MANOVA một nhân tố có ý nghĩa thống kê với Pillai = 0.0843. Tuy nhiên, kết quả phân tích hậu nghiệm ở câu (d) cho thấy độ lớn ảnh hưởng của từng biến nhìn chung nhỏ. Vì vậy, cần phân biệt giữa sự khác biệt có ý nghĩa thống kê và mức độ khác biệt thực tế.
+**Độ lớn hiệu ứng.** Ở câu (c), MANOVA một nhân tố có ý nghĩa thống kê với Pillai = 0.0843, nhưng PERMANOVA chỉ cho $R^2=0.019$, tương ứng khoảng 1.9% tổng biến thiên của chín biến đã chuẩn hóa. Ở câu (f), các giá trị partial eta-squared cũng tương đối nhỏ. Vì vậy, ý nghĩa thống kê không đồng nghĩa với sự khác biệt lớn về mặt thực tiễn.
+
+Để kiểm tra tính ổn định của kết luận, câu (c) đã bổ sung kiểm định hoán vị Pillai, PERMANOVA, bootstrap trong từng nhóm và MANOVA trên hạng. Các phương pháp này đều bác bỏ $H_0$ ở mức ý nghĩa 5%. Khi loại `JobLevel` do tương quan cao với `MonthlyIncome`, kết luận MANOVA cũng không thay đổi.
 
 Ngoài ra, dữ liệu quan sát chỉ cho phép nhận xét về mối liên hệ giữa các đặc điểm nhân viên và tình trạng nghỉ việc, chưa đủ cơ sở để kết luận quan hệ nhân quả.
 
-Để đánh giá tính nhất quán của kết quả, câu (c) đã bổ sung các kiểm định dựa trên hoán vị, bootstrap và thứ hạng cho MANOVA một nhân tố. Với thiết kế hai nhân tố ở câu (f), nhóm tiếp tục sử dụng Nonparametric MANOVA để kiểm tra xem kết luận có thay đổi khi chuyển sang phương pháp dựa trên thứ hạng hay không.
+## Phương pháp thay thế: Nonparametric MANOVA
 
+### Phương pháp và giả thuyết kiểm định
 
-###  Thực nghiệm Nonparametric MANOVA
+Do bốn biến tâm lý – hành vi có thang đo thứ bậc và giả định chuẩn đa biến chưa được đáp ứng, nhóm sử dụng Nonparametric MANOVA thông qua hàm `nparml()` của package `nparMD` trong R.
 
-####  Phương pháp và giả thuyết kiểm định
+Phương pháp này dựa trên hiệu ứng tương đối phi tham số, thay vì kiểm định trực tiếp sự bằng nhau của vectơ trung bình như MANOVA cổ điển. Cách tiếp cận này không yêu cầu giả định chuẩn đa biến và phù hợp với dữ liệu thứ bậc.
 
-Để bổ sung cho MANOVA hai nhân tố ở câu (f), sử dụng Nonparametric MANOVA thông qua package `nparMD` trong R.
+Sử dụng cùng thiết kế hai nhân tố ở câu (f):
 
-Phương pháp này dựa trên các hiệu ứng tương đối phi tham số, không yêu cầu giả định chuẩn đa biến và phù hợp với các biến phụ thuộc thứ bậc.
+- Nhân tố $A$: `Attrition` (No, Yes).
+- Nhân tố $B$: `OverTime` (No, Yes).
+- Vectơ biến phụ thuộc: `JobSatisfaction`, `EnvironmentSatisfaction`, `WorkLifeBalance`, `JobInvolvement`.
 
-Xét hai nhân tố Attrition ($A$) và OverTime ($B$), cùng bốn biến phụ thuộc:
+Ba giả thuyết kiểm định gồm:
 
-- JobSatisfaction
-- EnvironmentSatisfaction
-- WorkLifeBalance
-- JobInvolvement
+$$
+\begin{aligned}
+H_{0A}&:\text{ Không có hiệu ứng chính của Attrition},\\
+H_{0B}&:\text{ Không có hiệu ứng chính của OverTime},\\
+H_{0AB}&:\text{ Không có hiệu ứng tương tác Attrition}\times\text{OverTime}.
+\end{aligned}
+$$
 
-Ba giả thuyết cần kiểm định gồm:
+Các giả thuyết được hiểu theo hiệu ứng tương đối phi tham số. Mức ý nghĩa sử dụng là $\alpha=0.05$.
 
-- $H_{0A}$: Không có hiệu ứng chính của Attrition.
-- $H_{0B}$: Không có hiệu ứng chính của OverTime.
-- $H_{0AB}$: Không có hiệu ứng tương tác giữa Attrition và OverTime.
+### Chuẩn bị dữ liệu
 
-Các giả thuyết được hiểu theo hiệu ứng tương đối phi tham số, thay vì sự bằng nhau của vectơ trung bình như MANOVA cổ điển.
-
-Mức ý nghĩa sử dụng là $\alpha=0.05$.
-
-
-#### Chuẩn bị dữ liệu và thực hiện kiểm định
-
-Sử dụng cùng bốn biến phụ thuộc và hai nhân tố như câu (f) để đối chiếu kết quả giữa MANOVA cổ điển và Nonparametric MANOVA.
-
-**Chuẩn bị dữ liệu**
+Sử dụng 1.470 quan sát và bốn biến phụ thuộc như trong câu (f). Hai nhân tố được chuyển về dạng `factor` với các mức No và Yes.
 
 ```{r g-data}
-# kiểm tra package
+# kiem tra package
 if (!requireNamespace("nparMD", quietly = TRUE)) {
-  stop("Cần cài package nparMD: install.packages('nparMD')")
+  stop("Can cai package nparMD: install.packages('nparMD')")
 }
 
-# khai báo các biến phụ thuộc
+# khai bao bien phu thuoc
 g_vars <- c(
   "JobSatisfaction",
   "EnvironmentSatisfaction",
@@ -71,10 +61,9 @@ g_vars <- c(
   "JobInvolvement"
 )
 
-# sử dụng dữ liệu đã nạp từ các phần trước
+# chuan bi du lieu
 g_dat <- ea[, c("Attrition", "OverTime", g_vars)]
 
-# chuyển hai biến giải thích thành factor
 g_dat$Attrition <- factor(
   g_dat$Attrition,
   levels = c("No", "Yes")
@@ -85,26 +74,36 @@ g_dat$OverTime <- factor(
   levels = c("No", "Yes")
 )
 
-# kiểm tra dữ liệu
+# kiem tra du lieu
 stopifnot(
   !anyNA(g_dat),
   all(vapply(g_dat[g_vars], is.numeric, logical(1))),
   all(as.matrix(g_dat[g_vars]) %in% 1:4)
 )
 
-# thống kê cỡ mẫu theo bốn tổ hợp
-g_n <- table(g_dat$Attrition, g_dat$OverTime)
+# co mau theo bon nhom
+g_n <- as.data.frame(
+  table(
+    Attrition = g_dat$Attrition,
+    OverTime = g_dat$OverTime
+  )
+)
 
-knitr::kable(
-  as.data.frame(g_n),
-  caption = "Cỡ mẫu theo Attrition và OverTime"
+names(g_n)[3] <- "So_quan_sat"
+
+bang(
+  g_n,
+  caption = "Cỡ mẫu theo Attrition và OverTime",
+  row.names = FALSE
 )
 ```
 
-**Thực hiện Nonparametric MANOVA**
+### Thực hiện Nonparametric MANOVA
+
+Sử dụng hàm `nparml()` để kiểm định đồng thời ba hiệu ứng trong thiết kế hai nhân tố.
 
 ```{r g-nonparametric-manova}
-# kiểm định manova phi tham số với hai nhân tố
+# kiem dinh manova phi tham so hai nhan to
 g_np_manova <- nparMD::nparml(
   JobSatisfaction |
     EnvironmentSatisfaction |
@@ -113,28 +112,63 @@ g_np_manova <- nparMD::nparml(
   data = g_dat
 )
 
-# hiển thị kết quả kiểm định
+# xuat ket qua
 print(g_np_manova)
 ```
 
+Kết quả Nonparametric MANOVA theo thống kê Bartlett–Nanda–Pillai cho thấy cả `OverTime` ($p=0.01221$) và `Attrition` ($p<0.001$) đều có ý nghĩa thống kê ở mức 5%. Ngược lại, hiệu ứng tương tác giữa hai nhân tố không có ý nghĩa thống kê ($p=0.96038$). Các thống kê kiểm định còn lại cũng cho cùng kết luận.
 
-#### Kết quả Nonparametric MANOVA
+Đối chiếu với MANOVA cổ điển ở câu (f), kết luận không thay đổi đối với cả ba hiệu ứng. Tuy nhiên, hai phương pháp kiểm định các giả thuyết khác nhau nên kết quả này chỉ cho thấy sự nhất quán về quyết định kiểm định, không có nghĩa hai phương pháp hoàn toàn tương đương.
 
-Kết quả kiểm định Nonparametric MANOVA cho thấy cả hai hiệu ứng chính Attrition và OverTime đều có ý nghĩa thống kê ở mức 5%. Cụ thể, theo thống kê Bartlett–Nanda–Pillai, hiệu ứng OverTime có p = 0.01221 và Attrition có p < 0.001. Ngược lại, hiệu ứng tương tác Attrition × OverTime không có ý nghĩa thống kê (p = 0.96038). Các thống kê kiểm định còn lại cũng cho kết luận tương tự.
+## 3. Đối chiếu với MANOVA cổ điển
 
-Khi đối chiếu với MANOVA cổ điển ở câu (f), cả hai phương pháp đều phát hiện hiệu ứng chính của Attrition và OverTime, nhưng chưa có đủ bằng chứng về hiệu ứng tương tác. Điều này cho thấy kết luận kiểm định tương đối nhất quán khi chuyển từ phương pháp dựa trên trung bình sang phương pháp phi tham số dựa trên thứ hạng.
+Để đánh giá sự nhất quán của kết luận, đối chiếu các p-value từ Nonparametric MANOVA với kết quả MANOVA hai nhân tố Type III ở câu (f).
 
-Tuy nhiên, do hai phương pháp kiểm định các đại lượng khác nhau, sự nhất quán này không có nghĩa các giả định của MANOVA cổ điển đã được thỏa mãn.
+```{r g-comparison}
+# so sanh ket qua hai phuong phap
+g_compare <- data.frame(
+  Hieu_ung = c(
+    "Attrition",
+    "OverTime",
+    "Attrition × OverTime"
+  ),
+  MANOVA = c(
+    "< 0.001",
+    "0.00405",
+    "0.86689"
+  ),
+  Nonparametric_MANOVA = c(
+    "< 0.001",
+    "0.01221",
+    "0.96038"
+  ),
+  Ket_luan = c(
+    "Có ý nghĩa",
+    "Có ý nghĩa",
+    "Không có ý nghĩa"
+  )
+)
 
-####  Đối chiếu với MANOVA cổ điển
+bang(
+  g_compare,
+  digits = 5,
+  caption = "Đối chiếu MANOVA cổ điển và Nonparametric MANOVA",
+  row.names = FALSE,
+  col.names = c(
+    "Hiệu ứng",
+    "MANOVA cổ điển (p)",
+    "Nonparametric MANOVA (p)",
+    "Kết luận"
+  )
+)
+```
 
-| Hiệu ứng | MANOVA cổ điển (p-value) | Nonparametric MANOVA | Kết luận |
-|---|---:|---|---|
-| Attrition | < 0.001 | p < 0.05 | Có ý nghĩa |
-| OverTime | 0.00405 | p < 0.05 | Có ý nghĩa |
-| Attrition × OverTime | 0.86689 | p > 0.05 | Không có ý nghĩa |
+Kết quả cho thấy MANOVA cổ điển và Nonparametric MANOVA đưa ra cùng kết luận ở mức ý nghĩa 5%. Cả hai hiệu ứng chính Attrition và OverTime đều có ý nghĩa thống kê, trong khi hiệu ứng tương tác giữa hai nhân tố không có ý nghĩa.
 
-Hai phương pháp cho cùng kết luận ở cả ba hiệu ứng. Như vậy, khi chuyển từ MANOVA cổ điển sang phương pháp phi tham số dựa trên thứ hạng, quyết định kiểm định không thay đổi.
+Mặc dù p-value của hai phương pháp khác nhau, cả hai đều cho cùng kết luận ở mức ý nghĩa 5%. Cần lưu ý rằng MANOVA cổ điển kiểm định sự khác biệt giữa các vectơ trung bình, trong khi Nonparametric MANOVA kiểm định các hiệu ứng tương đối phi tham số. Do đó, kết quả của hai phương pháp chỉ được đối chiếu về kết luận kiểm định.
 
-Tuy nhiên, cần lưu ý rằng MANOVA cổ điển kiểm định sự khác biệt của vectơ trung bình, còn Nonparametric MANOVA kiểm định các hiệu ứng tương đối phi tham số. Vì vậy, kết quả nhất quán không có nghĩa hai phương pháp hoàn toàn tương đương.
+## 4. Kết luận
 
+Ở câu (c), kết quả MANOVA một nhân tố vẫn có ý nghĩa thống kê khi sử dụng kiểm định hoán vị, bootstrap và MANOVA trên hạng. Tương tự, đối với MANOVA hai nhân tố ở câu (f), phương pháp phi tham số cho cùng kết luận với MANOVA cổ điển: `Attrition` và `OverTime` có ý nghĩa thống kê, trong khi hiệu ứng tương tác không có ý nghĩa ở mức 5%.
+
+Nhìn chung, kết quả cho thấy có sự khác biệt đa biến giữa các nhóm nhân viên theo tình trạng nghỉ việc và làm thêm giờ. Tuy nhiên, độ lớn hiệu ứng tương đối nhỏ và dữ liệu chưa đáp ứng đầy đủ các giả định của MANOVA cổ điển. Do đó, kết quả chỉ phản ánh sự khác biệt và mối liên hệ thống kê giữa các nhóm, chưa đủ cơ sở để đưa ra kết luận về quan hệ nhân quả.

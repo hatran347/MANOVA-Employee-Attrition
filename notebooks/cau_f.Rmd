@@ -1,17 +1,23 @@
-<<<<<<< HEAD
----
-title: "MANOVA hai nhân tố: Attrition, OverTime và tương tác"
-output: html_document
----
 
 ```{r setup, include=FALSE}
 options(repos = c(CRAN = "https://cloud.r-project.org"))
-if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
-here::i_am("notebooks/cau_f.Rmd")   # xác định thư mục gốc project khi chạy riêng notebook
+
+if (!requireNamespace("here", quietly = TRUE)) {
+  install.packages("here")
+}
+
 source(here::here("R", "setup.R"))
-source(here::here("R", "du_lieu.R"))   # ea, Y (4 biến tâm lý – hành vi), bien_tl, o (4 cặp Working-NoOT, Left-NoOT, Working-OT, Left-OT)
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = "center")
-=======
+source(here::here("R", "du_lieu.R"))
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+```
+
+
 # MANOVA hai nhân tố: Attrition, OverTime và tương tác
 
 ## Mục tiêu phân tích
@@ -245,21 +251,16 @@ knitr::kable(
   digits = 3,
   caption = "Cỡ mẫu và trung bình các biến tâm lý – hành vi theo hai nhân tố"
 )
->>>>>>> 9260c87 (Add main report and questions f g)
 ```
 
 Bảng trên trình bày số lượng nhân viên và trung bình của bốn biến phụ thuộc tại từng tổ hợp Attrition × OverTime.
 
 Để quan sát sơ bộ hiệu ứng tương tác, sử dụng biểu đồ tương tác cho từng biến phụ thuộc.
 
-<<<<<<< HEAD
-Thống kê mô tả theo cặp, biểu đồ tương tác và toàn bộ kiểm tra giả định cho mô hình hai nhân tố (ngoại lai, chuẩn từng biến, chuẩn nhiều chiều, tương quan/VIF, Box's M, Levene) đã thực hiện ở mục 3, mục "hai nhân tố". Mục này bắt đầu từ mô hình và kiểm định MANOVA hai nhân tố.
-=======
 ```{r f-interaction-plot, fig.width=11, fig.height=8}
 local({
   old_par <- par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
   on.exit(par(old_par))
->>>>>>> 9260c87 (Add main report and questions f g)
 
   for (v in f_vars) {
     interaction.plot(
@@ -472,32 +473,64 @@ f_anova_results <- f_anova_results[
 
 rownames(f_anova_results) <- NULL
 
-# hiển thị bảng kết quả
-knitr::kable(
-  f_anova_results,
+```
+
+
+```{r f-holm-adjustment}
+# hieu chinh holm rieng cho tung nhan to
+f_anova_holm <- f_anova_results
+
+f_anova_holm$p_holm <- ave(
+  f_anova_holm$p_value,
+  f_anova_holm$Effect,
+  FUN = function(p) p.adjust(p, method = "holm")
+)
+
+# ket luan sau hieu chinh
+f_anova_holm$Conclusion_Holm <- ifelse(
+  f_anova_holm$p_holm < 0.05,
+  "Có ý nghĩa",
+  "Không có ý nghĩa"
+)
+
+# bang so sanh p-value goc va p-value holm
+bang(
+  f_anova_holm[, c(
+    "Variable", "Effect", "F",
+    "p_value", "p_holm",
+    "Partial_Eta2", "Conclusion_Holm"
+  )],
   digits = 5,
-  caption = "Kết quả ANOVA hai nhân tố cho từng biến phụ thuộc"
+  caption = "So sánh p-value gốc và p-value hiệu chỉnh Holm trong ANOVA Type III",
+  row.names = FALSE,
+  col.names = c(
+    "Biến phụ thuộc", "Nhân tố", "F",
+    "p gốc", "p Holm", "Eta² riêng phần", "Kết luận"
+  )
 )
 ```
 
 
-**Đánh giá kết quả ANOVAĐ**
+**Đánh giá kết quả ANOVA sau hiệu chỉnh Holm**
 
-Kết quả ANOVA hai nhân tố được đánh giá dựa trên thống kê F, p-value và partial eta-squared ($\eta_p^2$), với mức ý nghĩa $\alpha = 0.05$. Các p-value được sử dụng trực tiếp từ ANOVA Type III
+Kết quả ANOVA hai nhân tố được đánh giá dựa trên thống kê $F$, p-value và hệ số partial eta-squared ($\eta_p^2$), với mức ý nghĩa $\alpha = 0.05$.
+
+Do thực hiện đồng thời bốn kiểm định đơn biến cho mỗi hiệu ứng, phương pháp Holm được áp dụng riêng cho từng nhóm giả thuyết nhằm kiểm soát xác suất mắc ít nhất một sai lầm loại I (*family-wise error rate*). Bảng kết quả trình bày cả p-value gốc và p-value hiệu chỉnh để đối chiếu.
 
 ```{r f-anova-interpretation, results='asis'}
+# dien giai ket qua dua tren p-value holm
 for (effect in c("Attrition", "OverTime", "Attrition:OverTime")) {
-  z <- f_anova_results[
-    f_anova_results$Effect == effect,
+  z <- f_anova_holm[
+    f_anova_holm$Effect == effect,
   ]
 
-  significant <- z$Variable[z$p_value < 0.05]
+  significant <- z$Variable[z$p_holm < 0.05]
 
   cat("\n\n**", effect, ":** ", sep = "")
 
   if (length(significant) > 0) {
     cat(
-      "Các biến có ý nghĩa thống kê gồm: ",
+      "Các biến có ý nghĩa thống kê sau hiệu chỉnh Holm gồm: ",
       paste(significant, collapse = ", "),
       ".",
       sep = ""
@@ -505,17 +538,24 @@ for (effect in c("Attrition", "OverTime", "Attrition:OverTime")) {
   } else {
     cat(
       "Không có biến phụ thuộc nào có ý nghĩa thống kê ",
-      "ở mức 5%."
+      "sau hiệu chỉnh Holm ở mức 5%.",
+      sep = ""
     )
   }
 }
 ```
 
-**Nhận xét:** Kết quả cho thấy `Attrition` có ý nghĩa thống kê đối với cả bốn biến tâm lý – hành vi. Trong khi đó, `OverTime` chỉ có ý nghĩa thống kê đối với `EnvironmentSatisfaction`. Không phát hiện hiệu ứng tương tác `Attrition × OverTime` có ý nghĩa thống kê ở bất kỳ biến phụ thuộc nào.
+**Nhận xét:** Sau hiệu chỉnh Holm, kết luận thống kê không thay đổi so với kết quả ANOVA ban đầu.
 
-Xét về độ lớn hiệu ứng, các giá trị partial eta-squared đều nhỏ. Đối với `Attrition`, `JobInvolvement` có giá trị lớn nhất ($\eta_p^2 = 0.01761$), tiếp theo là `EnvironmentSatisfaction` ($0.01550$), `JobSatisfaction` ($0.01258$) và `WorkLifeBalance` ($0.00333$). Điều này cho thấy các khác biệt có ý nghĩa thống kê nhưng độ lớn hiệu ứng còn hạn chế.
+Đối với **Attrition**, cả bốn biến `JobSatisfaction`, `EnvironmentSatisfaction`, `WorkLifeBalance` và `JobInvolvement` đều có ý nghĩa thống kê sau hiệu chỉnh. Trong đó, `WorkLifeBalance` có p-value Holm bằng 0.02707, vẫn nhỏ hơn mức ý nghĩa 5%.
 
-Do thực hiện nhiều kiểm định đơn biến mà không hiệu chỉnh p-value, kết quả cần được diễn giải thận trọng về nguy cơ sai lầm loại I.
+Đối với **OverTime**, chỉ có `EnvironmentSatisfaction` có ý nghĩa thống kê ($p_{\mathrm{Holm}}=0.00668$). Các biến `JobSatisfaction`, `WorkLifeBalance` và `JobInvolvement` không có ý nghĩa thống kê sau hiệu chỉnh.
+
+Đối với **Attrition × OverTime**, cả bốn biến đều không có ý nghĩa thống kê sau hiệu chỉnh Holm ($p_{\mathrm{Holm}}=1$).
+
+Xét về độ lớn hiệu ứng, các giá trị partial eta-squared nhìn chung nhỏ. Đối với Attrition, `JobInvolvement` có hiệu ứng lớn nhất ($\eta_p^2=0.01761$), tiếp theo là `EnvironmentSatisfaction` ($0.01550$), `JobSatisfaction` ($0.01258$) và `WorkLifeBalance` ($0.00333$). Điều này cho thấy mặc dù các khác biệt có ý nghĩa thống kê, tỷ lệ biến thiên riêng phần gắn với từng hiệu ứng vẫn tương đối thấp.
+
+**Nhìn chung**, kết quả sau hiệu chỉnh Holm củng cố tính nhất quán của các kết luận ANOVA đơn biến. Tuy nhiên, phương pháp Holm chỉ kiểm soát sai lầm loại I khi thực hiện nhiều kiểm định, không khắc phục các vi phạm giả định của MANOVA cổ điển.
 
 
 ### Phân tích trung bình biên ước lượng
@@ -679,12 +719,24 @@ ggplot(
 ```
 
 
+
 ## Tổng hợp và kết luận
 
-Kết quả MANOVA hai nhân tố (Type III) cho thấy cả **Attrition** (Pillai = 0.05027; $F(4,1463)=19.360$; $p<0.001$) và **OverTime** (Pillai = 0.01042; $F(4,1463)=3.852$; $p=0.00405$) đều có ý nghĩa thống kê đối với vectơ bốn biến tâm lý – hành vi. Ngược lại, hiệu ứng tương tác **Attrition × OverTime** không có ý nghĩa thống kê ($p=0.86689$).
+Kết quả MANOVA hai nhân tố (Type III) cho thấy cả **Attrition** (Pillai = 0.05027; $F(4,1463)=19.360$; $p<0.001$) và **OverTime** (Pillai = 0.01042; $F(4,1463)=3.852$; $p=0.00405$) đều có ý nghĩa thống kê đối với vectơ bốn biến tâm lý – hành vi. Ngược lại, hiệu ứng tương tác **Attrition × OverTime** không có ý nghĩa thống kê (Pillai = 0.00087; $p=0.86689$). Như vậy, có bằng chứng về sự khác biệt đa biến theo từng nhân tố, nhưng chưa có đủ bằng chứng cho thấy sự khác biệt theo một nhân tố phụ thuộc vào mức của nhân tố còn lại.
 
-Phân tích ANOVA hai nhân tố cho thấy **Attrition có ý nghĩa thống kê đối với cả bốn biến phụ thuộc**, trong khi **OverTime chỉ có ý nghĩa đối với EnvironmentSatisfaction**. Không phát hiện hiệu ứng tương tác có ý nghĩa thống kê ở bất kỳ biến phụ thuộc nào.
+Phân tích ANOVA hai nhân tố (Type III) cho từng biến phụ thuộc, kết hợp **hiệu chỉnh p-value bằng phương pháp Holm** trong từng họ kiểm định, cho thấy kết luận không thay đổi so với kết quả sử dụng p-value gốc:
 
-Kết quả EMM cho thấy nhóm nhân viên ở lại có điểm trung bình biên cao hơn nhóm nghỉ việc ở cả bốn biến tâm lý – hành vi. Đối với OverTime, nhóm làm thêm giờ có mức EnvironmentSatisfaction cao hơn nhóm không làm thêm khoảng 0.25 điểm ($p=0.00167$).
+- **Attrition:** Có ý nghĩa thống kê đối với cả bốn biến `JobSatisfaction`, `EnvironmentSatisfaction`, `WorkLifeBalance` và `JobInvolvement`. Đáng chú ý, `WorkLifeBalance` vẫn có ý nghĩa sau hiệu chỉnh Holm ($p_{\mathrm{Holm}}=0.02707$).
+- **OverTime:** Chỉ có ý nghĩa thống kê đối với `EnvironmentSatisfaction` ($p_{\mathrm{Holm}}=0.00668$).
+- **Attrition × OverTime:** Không có hiệu ứng tương tác có ý nghĩa thống kê đối với bất kỳ biến phụ thuộc nào sau hiệu chỉnh Holm.
 
-**Nhìn chung**, tình trạng nghỉ việc và làm thêm giờ có liên hệ thống kê với sự khác biệt đa biến về tâm lý – hành vi của nhân viên, nhưng chưa có đủ bằng chứng về hiệu ứng tương tác giữa hai nhân tố. Tuy nhiên, độ lớn các hiệu ứng đơn biến tương đối nhỏ và một số giả định của MANOVA cổ điển chưa được đáp ứng đầy đủ. Vì vậy, kết quả cần được diễn giải thận trọng và không hàm ý quan hệ nhân quả.
+Xét về **độ lớn hiệu ứng**, các hệ số partial eta-squared ($\eta_p^2$) đều tương đối nhỏ. Đối với Attrition, giá trị lớn nhất thuộc về `JobInvolvement` ($\eta_p^2=0.01761$), tiếp theo là `EnvironmentSatisfaction` ($0.01550$), `JobSatisfaction` ($0.01258$) và `WorkLifeBalance` ($0.00333$). Điều này cho thấy ý nghĩa thống kê của các hiệu ứng không đồng nghĩa với mức độ khác biệt lớn về mặt thực tiễn.
+
+Kết quả phân tích **trung bình biên ước lượng (EMM)** cho thấy nhóm nhân viên đang làm việc (Attrition = No) có điểm trung bình biên cao hơn nhóm đã nghỉ việc (Attrition = Yes) ở cả bốn biến tâm lý – hành vi. Trong đó, mức chênh lệch lớn nhất thuộc về `EnvironmentSatisfaction` (khoảng 0.38 điểm), tiếp theo là `JobSatisfaction` (0.35 điểm), `JobInvolvement` (0.27 điểm) và `WorkLifeBalance` (0.11 điểm).
+
+Đối với OverTime, nhóm làm thêm giờ (OverTime = Yes) có mức `EnvironmentSatisfaction` trung bình biên cao hơn nhóm không làm thêm khoảng **0.25 điểm**. Hiệu ứng này vẫn có ý nghĩa thống kê theo kết quả ANOVA sau hiệu chỉnh Holm ($p_{\mathrm{Holm}}=0.00668$). Tuy nhiên, đây chỉ là mối liên hệ thống kê, không đủ cơ sở để kết luận rằng làm thêm giờ làm tăng mức độ hài lòng với môi trường làm việc.
+
+**Kết luận chung:** Tình trạng nghỉ việc và làm thêm giờ có liên hệ với sự khác biệt đa biến về các đặc điểm tâm lý – hành vi của nhân viên. Trong đó, Attrition có mối liên hệ rõ rệt hơn trên cả bốn biến phụ thuộc, còn OverTime chủ yếu liên quan đến `EnvironmentSatisfaction`. Không tìm thấy bằng chứng thống kê về hiệu ứng tương tác giữa hai nhân tố.
+
+
+
