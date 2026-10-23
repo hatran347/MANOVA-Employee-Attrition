@@ -3,8 +3,6 @@
 .RData
 .Ruserdata
 .Rproj.user
-*.html
-*.pdf
 *.utf8.md
 *.knit.md
 data/*.xls

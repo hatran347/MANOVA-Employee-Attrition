@@ -1,5 +1,5 @@
 ---
-title: "Câu g – Hạn chế của MANOVA và phương pháp thay thế"
+title: "Hạn chế của MANOVA và phương pháp thay thế"
 output: html_document
 ---
 
