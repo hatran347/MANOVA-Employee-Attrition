@@ -1,8 +1,9 @@
 ---
-title: "Thực hành MANOVA: Dữ liệu nhân viên (DataEA)"
+title: "Bài thực hành 1 – Chương 4: Phân tích phương sai nhiều chiều (MANOVA)"
+subtitle: "Dữ liệu nghỉ việc của nhân viên (DataEA)"
 author:
-  - "Vũ Hà Thư - 25C23004"
-  - "Hà"
+  - "Vũ Hà Thư – 25C23004"
+  - "Trần Việt Hà – 25C23020"
 date: "`r format(Sys.Date(), '%d/%m/%Y')`"
 output:
   html_document:
@@ -33,6 +34,8 @@ header-includes:
   - \RecustomVerbatimEnvironment{verbatim}{Verbatim}{breaklines}
   - \let\maketitle\relax
   - \renewcommand{\contentsname}{Mục lục}
+  - \renewcommand{\tablename}{Bảng}
+  - \renewcommand{\figurename}{Hình}
 ---
 
 ```{r setup, include=FALSE}
@@ -45,7 +48,7 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align =
 # Bản PDF: hình vừa khổ giấy, cairo_pdf để hiển thị tiếng Việt trong hình,
 # bảng nhiều cột (> 8) được thu nhỏ cho vừa chiều ngang trang.
 if (knitr::is_latex_output()) {
-  knitr::opts_chunk$set(out.width = "100%", dev = "cairo_pdf")
+  knitr::opts_chunk$set(out.width = "100%", dev = "cairo_pdf", echo = FALSE)   # bản PDF ẩn code
   knitr::opts_chunk$set(render = function(x, ...) {
     if (!is.data.frame(x)) return(knitr::knit_print(x, ...))
     if (ncol(x) <= 8) return(knitr::knit_print(knitr::kable(x), ...))
@@ -92,64 +95,73 @@ gop_cau <- function(file) {
 \end{tikzpicture}
 
 \begin{center}
-\textbf{\fontsize{14}{17}\selectfont ĐẠI HỌC QUỐC GIA TP. HCM}\\[2pt]
-\textbf{\fontsize{14}{17}\selectfont TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN}
-
-\vspace{8pt}
-\rule{4cm}{0.6pt}\\[8pt]
+\textbf{\fontsize{14}{17}\selectfont ĐẠI HỌC QUỐC GIA THÀNH PHỐ HỒ CHÍ MINH}\\[2pt]
+\textbf{\fontsize{14}{17}\selectfont TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN}\\[2pt]
 \textbf{\fontsize{13}{16}\selectfont KHOA TOÁN -- TIN HỌC}
 
-\vspace{3.5cm}
-\textbf{\fontsize{14}{17}\selectfont NHÓM ...}
+\vspace{6pt}
+\rule{5cm}{0.6pt}
 
-\vspace{3cm}
-\textbf{\fontsize{24}{28}\selectfont BÁO CÁO THỰC HÀNH}
+\vspace{2.5cm}
+{\fontsize{14}{17}\selectfont MÔN HỌC: THỐNG KÊ NHIỀU CHIỀU}
 
-\vspace{0.8cm}
-\textbf{\fontsize{14}{17}\selectfont CHƯƠNG 4: MANOVA -- DỮ LIỆU NHÂN VIÊN (DataEA)}
+\vspace{1.2cm}
+\textbf{\fontsize{26}{31}\selectfont BÀI THỰC HÀNH 1}
 
-\vspace{2.2cm}
-\textbf{\fontsize{14}{17}\selectfont THỐNG KÊ NHIỀU CHIỀU}
+\vspace{0.6cm}
+\textbf{\fontsize{16}{20}\selectfont CHƯƠNG 4: PHÂN TÍCH PHƯƠNG SAI NHIỀU CHIỀU (MANOVA)}
 
-\vspace{1cm}
-\fontsize{12}{15}\selectfont Giảng viên hướng dẫn: \textbf{...}
+\vspace{0.4cm}
+{\fontsize{13}{16}\selectfont\itshape Dữ liệu nghỉ việc của nhân viên (DataEA)}
+
+\vspace{2.5cm}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{@{}l l@{}}
+\textbf{Giảng viên hướng dẫn:} & TS. Nguyễn Thị Mộng Ngọc \\[4pt]
+\textbf{Học viên thực hiện:} & Vũ Hà Thư \quad -- \quad 25C23004 \\
+ & Trần Việt Hà \quad -- \quad 25C23020 \\
+\end{tabular}
+\renewcommand{\arraystretch}{1}
 
 \vfill
-\fontsize{12}{15}\selectfont TP. Hồ Chí Minh -- `r format(Sys.Date(), '%Y')`
+{\fontsize{12}{15}\selectfont Thành phố Hồ Chí Minh, tháng `r format(Sys.Date(), '%m/%Y')`}
+
+\vspace{1.6cm}
 \end{center}
 \end{titlepage}
 
 \thispagestyle{empty}
 \begin{center}
-\textbf{\fontsize{14}{17}\selectfont BẢNG PHÂN CÔNG CÔNG VIỆC}
+\textbf{\fontsize{15}{18}\selectfont BẢNG PHÂN CÔNG CÔNG VIỆC}
 \end{center}
 
-\vspace{1cm}
+\vspace{0.8cm}
 \begin{center}
-\renewcommand{\arraystretch}{1.4}
+\renewcommand{\arraystretch}{1.35}
 \setlength{\tabcolsep}{6pt}
-\begin{tabular}{|>{\raggedright\arraybackslash}p{3.6cm}|>{\centering\arraybackslash}p{2cm}|>{\raggedright\arraybackslash}p{7cm}|>{\centering\arraybackslash}p{2cm}|}
-\hline
-\textbf{Họ và Tên} & \textbf{Mã số HV} & \textbf{Công việc} & \textbf{Mức độ hoàn thành} \\
-\hline
-Vũ Hà Thư & 25C23004 &
-\begin{itemize}[leftmargin=*, topsep=0pt, partopsep=0pt, itemsep=2pt, parsep=0pt]
-\item Câu (a): dữ liệu và mô hình MANOVA một nhân tố
-\item Câu (b): kiểm tra giả định
-\item Câu (c): kiểm định MANOVA một nhân tố
-\item Câu (d): phân tích hậu nghiệm
-\item Câu (e): nhận xét
+\begin{tabular}{>{\centering\arraybackslash}p{0.8cm} >{\raggedright\arraybackslash}p{3.2cm} >{\centering\arraybackslash}p{2.1cm} >{\raggedright\arraybackslash}p{6.6cm} >{\centering\arraybackslash}p{1.9cm}}
+\toprule
+\textbf{STT} & \textbf{Họ và tên} & \textbf{MSHV} & \textbf{Nội dung phụ trách} & \textbf{Mức độ hoàn thành} \\
+\midrule
+1 & Vũ Hà Thư & 25C23004 &
+\begin{itemize}[leftmargin=*, nosep, before=\vspace{-0.6\baselineskip}, after=\vspace{-\baselineskip}]
+\item Mục 1: Câu hỏi nghiên cứu và quy ước
+\item Mục 2 (câu a): Xác định mô hình, biến và giả thuyết
+\item Mục 3 (câu b): Kiểm tra giả định
+\item Mục 4 (câu c): Kiểm định MANOVA một nhân tố
+\item Mục 5 (câu d): Phân tích hậu nghiệm
+\item Mục 6 (câu e): Nhận xét và ý nghĩa thực tiễn
 \end{itemize}
 & 100\% \\
-\hline
-Hà & ... &
-\begin{itemize}[leftmargin=*, topsep=0pt, partopsep=0pt, itemsep=2pt, parsep=0pt]
-\item Câu (f): MANOVA hai nhân tố
-\item Câu (g): hạn chế và phương pháp thay thế
+\midrule
+2 & Trần Việt Hà & 25C23020 &
+\begin{itemize}[leftmargin=*, nosep, before=\vspace{-0.6\baselineskip}, after=\vspace{-\baselineskip}]
+\item Mục 7 (câu f): MANOVA hai nhân tố
+\item Mục 8 (câu g): Hạn chế của MANOVA và phương pháp thay thế
 \item Thuyết trình
 \end{itemize}
 & 100\% \\
-\hline
+\bottomrule
 \end{tabular}
 \end{center}
 \renewcommand{\arraystretch}{1}
@@ -162,8 +174,26 @@ Hà & ... &
 \setcounter{page}{1}
 ```
 
-```{r phan-cong-html, echo=FALSE, results="asis", eval=knitr::is_html_output()}
-cat("**Phân công:** Vũ Hà Thư: câu (a)–(e); Hà: câu (f)–(g) và thuyết trình.\n")
+```{r thong-tin-html, echo=FALSE, results="asis", eval=knitr::is_html_output()}
+cat('<div style="text-align:center; margin:1.5em 0 2em;">',
+    '<p style="margin:0;"><b>Môn học:</b> Thống kê nhiều chiều &nbsp;|&nbsp; <b>Giảng viên hướng dẫn:</b> TS. Nguyễn Thị Mộng Ngọc</p>',
+    '<p style="margin:0;"><b>Học viên thực hiện:</b> Vũ Hà Thư (25C23004), Trần Việt Hà (25C23020)</p>',
+    '</div>', sep = "\n")
+phan_cong <- data.frame(
+  stt = 1:2,
+  ho_ten = c("Vũ Hà Thư", "Trần Việt Hà"),
+  mshv = c("25C23004", "25C23020"),
+  noi_dung = c(paste("Mục 1: Câu hỏi nghiên cứu và quy ước", "Mục 2 (câu a): Xác định mô hình, biến và giả thuyết",
+                     "Mục 3 (câu b): Kiểm tra giả định", "Mục 4 (câu c): Kiểm định MANOVA một nhân tố",
+                     "Mục 5 (câu d): Phân tích hậu nghiệm", "Mục 6 (câu e): Nhận xét và ý nghĩa thực tiễn", sep = "<br>"),
+               paste("Mục 7 (câu f): MANOVA hai nhân tố", "Mục 8 (câu g): Hạn chế của MANOVA và phương pháp thay thế",
+                     "Thuyết trình", sep = "<br>")),
+  hoan_thanh = c("100%", "100%"))
+k <- knitr::kable(phan_cong, format = "html", escape = FALSE, align = c("c", "l", "c", "l", "c"),
+                  col.names = c("STT", "Họ và tên", "MSHV", "Nội dung phụ trách", "Mức độ hoàn thành"),
+                  caption = "Bảng phân công công việc")
+if (co_kableExtra) k <- kableExtra::kable_styling(k, bootstrap_options = c("bordered", "condensed"), full_width = FALSE, position = "center")
+cat(as.character(k))
 ```
 
 # Câu hỏi nghiên cứu và quy ước
@@ -180,3 +210,4 @@ for (cau in c("a", "b", "c", "d", "e", "f", "g")) {
   cat(gop_cau(here::here("notebooks", paste0("cau_", cau, ".Rmd"))), sep = "\n")
 }
 ```
+

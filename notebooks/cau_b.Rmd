@@ -303,7 +303,7 @@ Biểu đồ chi-bình phương của 4 cặp có dạng bậc thang do 4 biến
 
 ## Tương quan và đa cộng tuyến giữa các biến phụ thuộc
 
-Việc xét đồng thời các biến bằng MANOVA có ý nghĩa khi các biến phụ thuộc có tương quan với nhau; đồng thời các biến không được có đa cộng tuyến để ma trận phần dư $\mathbf W$ khả nghịch.
+Theo Johnson & Wichern (mục 6.10, Ví dụ 6.16), một kiểm định nhiều chiều được ưu tiên hơn nhiều kiểm định một chiều vì nó kiểm soát xác suất sai lầm tổng thể và sử dụng thông tin tương quan giữa các biến, thông tin mà các kiểm định từng biến bỏ qua. Mặt khác, các biến không được có đa cộng tuyến hoàn toàn để ma trận phần dư $\mathbf W$ khả nghịch.
 
 **Hệ số tương quan Pearson** giữa hai biến $i$ và $k$ trong một nhóm:
 
@@ -496,7 +496,7 @@ for (v in bien) hist(ea[[v]], breaks = 30, main = v, xlab = "", col = "salmon")
 par(mfrow = c(1, 1))
 ```
 
-Histogram cho thấy nguyên nhân: 5 biến thứ bậc chỉ nhận 4–5 giá trị rời rạc, còn thu nhập và các biến số năm lệch phải.
+Histogram cho thấy nguyên nhân: 5 biến thứ bậc chỉ nhận 4–5 giá trị rời rạc, còn thu nhập và các biến số năm lệch phải. Theo Johnson & Wichern (mục 4.6), với cỡ mẫu rất lớn, các kiểm định độ phù hợp hầu như luôn bác bỏ kể cả khi độ lệch khỏi phân phối chuẩn nhỏ và không ảnh hưởng đến suy diễn; ở đây histogram cho thấy độ lệch là thực chất (biến rời rạc, lệch phải mạnh), không chỉ do cỡ mẫu lớn.
 
 Shapiro-Wilk xét từng biến riêng, nên kịch bản 2 có cùng kết quả với 8 biến còn lại trong bảng trên.
 
@@ -710,9 +710,9 @@ Giả định p chiều chỉ vi phạm nhẹ (chuẩn nhiều chiều ở 3/4 c
 
 Theo quy trình 4 bước của môn học: MANOVA luôn được thực hiện và dùng làm baseline; khi giả định từng biến cũng vi phạm nặng (bước 4) thì thử biến đổi dữ liệu, nếu không được thì dùng phương pháp phi tham số / vững, và MANOVA cổ điển chỉ để tham khảo. Với dữ liệu này, biến đổi (ví dụ log) không làm 5 biến thứ bậc 4–5 mức có phân phối chuẩn, nên mục 4 dùng:
 
-1. MANOVA cổ điển (Wilks, Pillai) theo yêu cầu của đề, làm baseline. Theo Johnson & Wichern (mục 6.6), với cỡ mẫu lớn như ở đây (n = 1470) các kiểm định MANOVA về trung bình khá vững với dữ liệu không chuẩn; theo mục 6.7, Pillai có phần vững hơn các thống kê khác.
+1. MANOVA cổ điển (Wilks, Pillai) theo yêu cầu của đề, làm baseline. Theo Johnson & Wichern (mục 6.6), với cỡ mẫu khá lớn như ở đây (n = 1470) các kiểm định MANOVA về trung bình khá vững với dữ liệu không chuẩn, và Box's M có thể bác bỏ do dữ liệu không chuẩn trong khi MANOVA không bị ảnh hưởng; mục 6.3 cũng nêu Hotelling $T^2$ ít bị ảnh hưởng bởi độ lệch nhẹ khỏi phân phối chuẩn khi cỡ mẫu vừa đến lớn; mục 6.10 nêu Pillai vững hơn đôi chút khi dữ liệu không chuẩn.
 2. Kiểm định không cần giả định chuẩn: hoán vị Pillai, PERMANOVA (kèm betadisper), MANOVA trên hạng.
-3. Bootstrap trong từng nhóm cho vi phạm Box's M, vì hai nhóm có cỡ mẫu chênh lệch lớn nên khác biệt hiệp phương sai có thể ảnh hưởng đến MANOVA.
+3. Kiểm định cho vi phạm Box's M: Johnson & Wichern (mục 6.6) chỉ ra khác biệt hiệp phương sai ít ảnh hưởng đến MANOVA khi cỡ mẫu các nhóm bằng nhau, và (mục 6.3) ảnh hưởng lớn nhất khi một nhóm nhỏ hơn nhiều nhóm kia, đúng như ở đây (1233 so với 237). Vì vậy mục 4 dùng kiểm định $T^2$ không cần $\boldsymbol\Sigma_1 = \boldsymbol\Sigma_2$ (Johnson & Wichern, Kết quả 6.4 và công thức 6-27 đến 6-29) và bootstrap trong từng nhóm.
 4. So sánh kết luận của kịch bản 1 (9 biến) và kịch bản 2 (bỏ `MonthlyIncome`, 8 biến) để kiểm tra ảnh hưởng của đa cộng tuyến.
 
 Ở mục 7, MANOVA hai nhân tố cần kèm kiểm định vững cho tương tác (hoán vị Freedman–Lane, bootstrap trong từng cặp) và phân tích từng biến bằng ANOVA hai nhân tố với sai số chuẩn vững HC3 + hiệu chỉnh Holm.

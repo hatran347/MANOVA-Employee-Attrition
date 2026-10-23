@@ -40,7 +40,14 @@ if (!requireNamespace("kableExtra", quietly = TRUE)) {
 co_kableExtra <- requireNamespace("kableExtra", quietly = TRUE)
 
 bang <- function(x, ..., digits = 3, caption = NULL, soc = TRUE) {
-  k <- knitr::kable(x, digits = digits, caption = caption, booktabs = TRUE, ...)
+  # Ban PDF: thoat cac ky tu dac biet cua LaTeX trong tieu de bang (_ % # & $)
+  if (!is.null(caption) && knitr::is_latex_output()) caption <- gsub("([_%#&$])", "\\\\\\1", caption)
+  # Ban PDF: dung tabular thuong (khong dung longtable) de scale_down thu nho bang vua khung trang
+  if (knitr::is_latex_output()) {
+    k <- knitr::kable(x, format = "latex", digits = digits, caption = caption, booktabs = TRUE, longtable = FALSE, ...)
+  } else {
+    k <- knitr::kable(x, digits = digits, caption = caption, booktabs = TRUE, ...)
+  }
   if (!co_kableExtra) return(k)
   kableExtra::kable_styling(k, bootstrap_options = c(if (soc) "striped", "hover", "condensed"),
                             full_width = FALSE, position = "center",

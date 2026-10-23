@@ -23,7 +23,7 @@ Mục 4 cho thấy vectơ trung bình 9 biến của nhóm Working và nhóm Lef
 1. **MANOVA theo từng khối biến** (thu nhập – nghề nghiệp, kinh nghiệm, tâm lý – hành vi): mỗi khối có thực sự khác nhau giữa hai nhóm không.
 2. **Phân tích từng biến** bằng ANOVA một nhân tố, kèm phiên bản không cần phương sai bằng nhau (Welch) và phiên bản phi tham số (Mann-Whitney), hiệu chỉnh Holm cho 9 biến.
 
-Theo Johnson & Wichern (mục 6.7), chỉ khi kiểm định nhiều chiều cho thấy có khác biệt mới đi sâu vào từng biến; điều kiện này đã thỏa ở mục 4.
+Theo Johnson & Wichern (mục 6.10), chỉ khi kiểm định nhiều chiều cho thấy có khác biệt mới đi sâu vào từng biến, và nên dùng khoảng tin cậy Bonferroni cho từng biến để kiểm soát sai lầm tổng thể; điều kiện này đã thỏa ở mục 4.
 
 ## Hiệu chỉnh cho nhiều kiểm định (Holm)
 
@@ -115,7 +115,7 @@ H_A &: \mu_1 \neq \mu_2
 \end{aligned}
 $$
 
-Ba kiểm định được dùng song song, mỗi kiểm định đòi hỏi giả định khác nhau.
+Ba kiểm định được dùng song song, mỗi kiểm định đòi hỏi giả định khác nhau. ANOVA và Welch t kiểm định đúng cặp giả thuyết trên về trung bình; Mann-Whitney kiểm định $H_0$: phân phối của biến ở hai nhóm như nhau, đối với $H_A$: giá trị ở một nhóm có xu hướng lớn hơn nhóm kia, nên được dùng để đối chiếu chiều và mức ý nghĩa của khác biệt.
 
 **(1) ANOVA một nhân tố (kiểm định F của Fisher)** — giả định chuẩn và phương sai bằng nhau:
 
@@ -140,7 +140,7 @@ t = \frac{\bar x_2 - \bar x_1}{\sqrt{\dfrac{s_1^2}{n_1} + \dfrac{s_2^2}{n_2}}}, 
 \nu = \frac{\left(\dfrac{s_1^2}{n_1} + \dfrac{s_2^2}{n_2}\right)^2}{\dfrac{(s_1^2/n_1)^2}{n_1 - 1} + \dfrac{(s_2^2/n_2)^2}{n_2 - 1}},
 $$
 
-với $s_1^2$, $s_2^2$ là phương sai mẫu của biến ở nhóm Working ($n_1 = 1233$) và Left ($n_2 = 237$). Mẫu số là sai số chuẩn của hiệu hai trung bình, dùng riêng phương sai từng nhóm thay vì phương sai gộp; bậc tự do $\nu$ (Welch–Satterthwaite) giảm khi phương sai hai nhóm chênh lệch. Khoảng tin cậy 95% của hiệu: $(\bar x_2 - \bar x_1) \pm t_{\nu}(0.975)\sqrt{s_1^2/n_1 + s_2^2/n_2}$. Với hai nhóm, Welch t tương đương Welch ANOVA ($F_{Welch} = t^2$). Đây là kiểm định chính, theo hướng xử lý ở mục 3.
+với $s_1^2$, $s_2^2$ là phương sai mẫu của biến ở nhóm Working ($n_1 = 1233$) và Left ($n_2 = 237$). Mẫu số là sai số chuẩn của hiệu hai trung bình, dùng riêng phương sai từng nhóm thay vì phương sai gộp; bậc tự do $\nu$ (Welch–Satterthwaite) giảm khi phương sai hai nhóm chênh lệch. Khoảng tin cậy 95% của hiệu: $(\bar x_2 - \bar x_1) \pm t_{\nu}(0.975)\sqrt{s_1^2/n_1 + s_2^2/n_2}$. Theo khuyến nghị của Johnson & Wichern (mục 6.10, công thức 6-30 cho trường hợp tổng quát), để 9 khoảng tin cậy **cùng đúng** với độ tin cậy 95%, mỗi khoảng dùng mức Bonferroni $t_{\nu}\big(1 - \tfrac{0.05}{2p}\big)$ với $p = 9$, tức độ tin cậy riêng $1 - 0.05/9 \approx 99.44\%$; khoảng Bonferroni rộng hơn khoảng 95% riêng lẻ. Với hai nhóm, Welch t tương đương Welch ANOVA ($F_{Welch} = t^2$). Đây là kiểm định chính, theo hướng xử lý ở mục 3.
 
 **(3) Kiểm định Mann-Whitney (Wilcoxon tổng hạng)** — phi tham số, không giả định chuẩn, phù hợp với 5 biến thứ bậc:
 
@@ -156,11 +156,13 @@ tung_bien <- do.call(rbind, lapply(bien, function(v) {
   a  <- anova(lm(y ~ nhom))                          # ANOVA một nhân tố
   ss <- a$`Sum Sq`; ms <- a$`Mean Sq`
   w  <- t.test(y ~ nhom)                             # Welch (mặc định var.equal = FALSE), hiệu No − Yes
+  wb <- t.test(y ~ nhom, conf.level = 1 - 0.05 / length(bien))   # Welch, mức Bonferroni
   mw <- wilcox.test(y ~ nhom, exact = FALSE)         # Mann-Whitney
   data.frame(bien = v,
              tb_Working = mean(y[nhom == "No"]), tb_Left = mean(y[nhom == "Yes"]),
              chenh = mean(y[nhom == "Yes"]) - mean(y[nhom == "No"]),
              ci_duoi = -w$conf.int[2], ci_tren = -w$conf.int[1],    # đổi sang hiệu Left − Working
+             bf_duoi = -wb$conf.int[2], bf_tren = -wb$conf.int[1],  # KTC Bonferroni (đồng thời 95%)
              F = a$`F value`[1], p_F = a$`Pr(>F)`[1],
              omega2 = (ss[1] - a$Df[1] * ms[2]) / (sum(ss) + ms[2]),
              t = -unname(w$statistic), df_welch = unname(w$parameter), p_welch = w$p.value,
@@ -174,16 +176,18 @@ tung_bien$p_mw_holm    <- p.adjust(tung_bien$p_mw, method = "holm")
 ### Kết quả theo từng biến
 
 ```{r bang-trung-binh}
-bang(tung_bien[, c("bien", "tb_Working", "tb_Left", "chenh", "ci_duoi", "ci_tren")], digits = 2, row.names = FALSE,
-     col.names = c("Biến", "Working", "Left", "Left − Working", "Cận dưới", "Cận trên"),
-     caption = "Trung bình và khoảng tin cậy 95% (Welch) của chênh lệch") |>
-  them_tieu_de(header = c(" " = 1, "Trung bình" = 2, " " = 1, "KTC 95%" = 2))
+bang(tung_bien[, c("bien", "tb_Working", "tb_Left", "chenh", "ci_duoi", "ci_tren", "bf_duoi", "bf_tren")],
+     digits = 2, row.names = FALSE,
+     col.names = c("Biến", "Working", "Left", "Left − Working", "Cận dưới", "Cận trên", "Cận dưới", "Cận trên"),
+     caption = "Trung bình và khoảng tin cậy (Welch) của chênh lệch") |>
+  them_tieu_de(header = c(" " = 1, "Trung bình" = 2, " " = 1, "KTC 95% riêng lẻ" = 2, "KTC đồng thời 95% (Bonferroni)" = 2))
 ```
 
 - Khoảng tin cậy 95% của mọi chênh lệch đều nằm hoàn toàn bên dưới 0: nhóm Left có trung bình **thấp hơn** nhóm Working ở cả 9 biến.
 - **Thu nhập – nghề nghiệp:** thu nhập của nhóm Left thấp hơn 2046 (KTC 95%: 1508 đến 2583), tức khoảng 30% so với trung bình nhóm Working (6833); cấp bậc thấp hơn 0.51 bậc (0.37 đến 0.64).
 - **Kinh nghiệm:** tổng số năm làm việc thấp hơn 3.6 năm (2.6 đến 4.6), số năm tại công ty thấp hơn 2.2 năm (1.4 đến 3.1), số năm ở vị trí hiện tại thấp hơn 1.6 năm (1.1 đến 2.0).
 - **Tâm lý – hành vi:** hài lòng công việc và hài lòng môi trường thấp hơn khoảng 0.31 điểm, mức độ tham gia công việc thấp hơn 0.25 điểm, cân bằng công việc – cuộc sống thấp hơn 0.12 điểm (0.01 đến 0.23) trên thang 1–4.
+- **Khoảng Bonferroni:** 8/9 khoảng đồng thời vẫn nằm hoàn toàn dưới 0. Riêng `WorkLifeBalance` có khoảng Bonferroni từ −0.28 đến 0.04, chứa 0: khi đòi hỏi 9 khoảng cùng đúng với độ tin cậy 95%, chưa có cơ sở khẳng định trung bình cân bằng công việc – cuộc sống của hai nhóm khác nhau.
 
 ```{r bang-kiem-dinh}
 kd <- data.frame(bien = tung_bien$bien,
@@ -198,7 +202,7 @@ bang(kd, digits = 3, row.names = FALSE,
 ```
 
 - Với kiểm định chính (Welch t), p-giá trị Holm của 9 biến từ 4.0e-12 đến 0.0305, đều < 0.05, nên ta bác bỏ $H_0$ với mức ý nghĩa 5% cho cả 9 biến, nghĩa là trung bình của từng biến khác nhau giữa hai nhóm; ANOVA một nhân tố và Mann-Whitney cho cùng kết luận.
-- `WorkLifeBalance` là biến có khác biệt yếu nhất: p-giá trị Holm của Welch là 0.0305 và của Mann-Whitney là 0.0465, chỉ vừa dưới 0.05.
+- `WorkLifeBalance` là biến có khác biệt yếu nhất: p-giá trị Holm của Welch là 0.0305 và của Mann-Whitney là 0.0465, chỉ vừa dưới 0.05. Holm bác bỏ $H_0$ trong khi khoảng Bonferroni ở trên chứa 0, vì Holm là thủ tục tuần tự: p-giá trị của biến này lớn nhất nên chỉ nhân hệ số 1, còn Bonferroni nhân hệ số 9 cho mọi biến. Khác biệt của `WorkLifeBalance` vì vậy là khác biệt biên, phụ thuộc vào thủ tục hiệu chỉnh.
 - $\omega^2$ của 9 biến chỉ từ 0.003 (`WorkLifeBalance`) đến 0.029 (`TotalWorkingYears`), tức `Attrition` giải thích dưới 3% phương sai của từng biến; theo ngưỡng tham khảo của Cohen, các ảnh hưởng ở mức nhỏ. Các biến thu nhập – nghề nghiệp và kinh nghiệm có $\omega^2$ (0.017–0.029) lớn hơn các biến tâm lý – hành vi (0.003–0.016).
 
 ```{r bieu-do-chenh-lech, fig.width=10, fig.height=5}
@@ -261,4 +265,4 @@ Với mức ý nghĩa 5%, sau hiệu chỉnh Holm:
 
 1. Cả **3 khối biến** đều có khác biệt đa biến giữa nhân viên đã nghỉ việc và nhân viên đang làm việc (MANOVA theo khối và bootstrap trong từng nhóm đều cho p-giá trị < 0.05).
 2. Cả **9 biến** đều có khác biệt đáng kể: nhân viên đã nghỉ việc có thu nhập, cấp bậc, tổng số năm làm việc, số năm tại công ty, số năm ở vị trí hiện tại và 4 mức hài lòng – tham gia **thấp hơn** nhân viên đang làm việc. Kết luận giống nhau ở ANOVA, Welch t và Mann-Whitney, nên không phụ thuộc vào giả định chuẩn hay phương sai bằng nhau.
-3. Khác biệt rõ nhất ở **kinh nghiệm và thu nhập – cấp bậc**; yếu nhất ở **cân bằng công việc – cuộc sống**. Độ lớn ảnh hưởng của từng biến đều nhỏ ($\omega^2 < 0.03$), phù hợp với kết quả mục 4 là hai nhóm chồng lấn nhiều.
+3. Khác biệt rõ nhất ở **kinh nghiệm và thu nhập – cấp bậc**; yếu nhất ở **cân bằng công việc – cuộc sống**, là khác biệt biên (có ý nghĩa theo Holm nhưng khoảng Bonferroni chứa 0). Độ lớn ảnh hưởng của từng biến đều nhỏ ($\omega^2 < 0.03$), phù hợp với kết quả mục 4 là hai nhóm chồng lấn nhiều.

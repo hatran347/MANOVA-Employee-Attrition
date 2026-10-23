@@ -104,7 +104,7 @@ Cả hai cách đều cho p-giá trị < 0.05 nên ta bác bỏ $H_0$ với mứ
 
 ## Thống kê Pillai
 
-Gọi $\lambda_1 \ge \dots \ge \lambda_s$ là các giá trị riêng khác 0 của $\mathbf W^{-1}\mathbf B$, với $s = \min(p, g - 1)$. Thống kê vết Pillai (Johnson & Wichern, mục 6.7):
+Gọi $\lambda_1 \ge \dots \ge \lambda_s$ là các giá trị riêng khác 0 của $\mathbf W^{-1}\mathbf B$, với $s = \min(p, g - 1)$. Thống kê vết Pillai (Johnson & Wichern, mục 6.10):
 
 $$
 V = \text{tr}\big[\mathbf B(\mathbf B + \mathbf W)^{-1}\big] = \sum_{i=1}^{s}\frac{\lambda_i}{1 + \lambda_i}.
@@ -114,7 +114,7 @@ $$
 - Mỗi $\frac{\lambda_i}{1+\lambda_i} \in [0, 1)$ là tỷ lệ biến thiên giữa nhóm trên một hướng (tổ hợp tuyến tính của 9 biến) phân biệt hai nhóm; $V$ lớn khi các nhóm tách biệt.
 - Với $g = 2$ thì $s = 1$ (chỉ có một hướng phân biệt), nên $V = \frac{\lambda_1}{1+\lambda_1} = 1 - \Lambda^*$; khi đó $F = \frac{n - p - 1}{p}\cdot\frac{V}{1 - V} \sim F_{9,\,1460}$, trùng với F chính xác của Wilks.
 
-Theo Johnson & Wichern (mục 6.7), Pillai có phần vững hơn các thống kê khác khi dữ liệu không chuẩn, nên được dùng làm thống kê chính cho các kiểm định vững ở mục sau.
+Theo Johnson & Wichern (mục 6.10), bốn thống kê Wilks, Lawley–Hotelling, Pillai và Roy gần như tương đương khi cỡ mẫu rất lớn, và có một số bằng chứng mô phỏng cho thấy Pillai vững hơn đôi chút khi dữ liệu không chuẩn, nên được dùng làm thống kê chính cho các kiểm định vững ở mục sau.
 
 ```{r pillai}
 kq_pillai <- summary(manova(X ~ nhom), test = "Pillai")$stats
@@ -137,7 +137,7 @@ $$
 
 tức tỷ lệ số lần dữ liệu giả lập dưới $H_0$ cho thống kê lớn ít nhất bằng dữ liệu thật (cộng 1 để tính cả chính dữ liệu thật). p-giá trị nhỏ nhất có thể đạt được là $1/1000 = 0.001$.
 
-### 1. Kiểm định hoán vị cho Pillai
+### Kiểm định hoán vị cho Pillai
 
 Nếu $H_0$ đúng (hai nhóm có cùng phân phối) thì nhãn Working/Left không mang thông tin, nên có thể hoán đổi nhãn giữa các nhân viên. Mỗi lần lặp, xáo trộn ngẫu nhiên nhãn `Attrition` của 1470 nhân viên (giữ nguyên 1233 nhãn Working và 237 nhãn Left), giữ nguyên vectơ 9 biến của từng người, rồi tính lại Pillai $V^*_b$. Phân phối của $V^*_b$ là phân phối của Pillai dưới $H_0$, được tạo từ chính dữ liệu thay vì giả định chuẩn.
 
@@ -156,7 +156,7 @@ bang(data.frame(pillai_qs, max(pillai_hv), (sum(pillai_hv >= pillai_qs) + 1) / (
 
 Pillai quan sát = 0.0843, lớn hơn mọi giá trị trong 999 lần hoán vị (lớn nhất 0.0199). p-giá trị hoán vị = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình của hai nhóm khác nhau.
 
-### 2. PERMANOVA và kiểm tra độ phân tán (betadisper)
+### PERMANOVA và kiểm tra độ phân tán (betadisper)
 
 **PERMANOVA** (Anderson, 2001, *Austral Ecology* 26) so sánh vị trí (trọng tâm) của các nhóm chỉ dựa trên khoảng cách giữa các quan sát. Trước hết 9 biến được chuẩn hóa bằng `scale()` (trừ trung bình, chia độ lệch chuẩn) vì khác đơn vị, rồi tính khoảng cách Euclid $d_{ij}$ giữa mọi cặp nhân viên $i$, $j$. Với $N = 1470$ nhân viên và $g = 2$ nhóm:
 
@@ -203,7 +203,7 @@ bang(kq_betadisper, digits = 3, caption = "betadisper",
 
 betadisper: F = 1.15, p-giá trị = 0.283 > 0.05 nên ta không bác bỏ $H_0$, nghĩa là chưa có cơ sở cho rằng độ phân tán của hai nhóm khác nhau; vì vậy kết quả PERMANOVA phản ánh khác biệt về vị trí, không bị lẫn với khác biệt về độ phân tán.
 
-### 3. Bootstrap trong từng nhóm (cho phép ma trận hiệp phương sai khác nhau)
+### Bootstrap trong từng nhóm (cho phép ma trận hiệp phương sai khác nhau)
 
 Các bước:
 
@@ -237,7 +237,47 @@ bang(data.frame(pillai_qs, max(pillai_bs), (sum(pillai_bs >= pillai_qs) + 1) / (
 
 Dưới $H_0$, Pillai bootstrap lớn nhất là 0.0246, nhỏ hơn nhiều so với Pillai quan sát 0.0843. p-giá trị bootstrap = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình của hai nhóm khác nhau, kể cả khi cho phép ma trận hiệp phương sai của hai nhóm khác nhau.
 
-### 4. MANOVA trên hạng (vi phạm chuẩn từng biến)
+### Kiểm định T² khi hai ma trận hiệp phương sai khác nhau (Johnson & Wichern, mục 6.3)
+
+Với hai nhóm, Johnson & Wichern (mục 6.3, Kết quả 6.4) đưa ra cách so sánh hai vectơ trung bình **không cần** $\boldsymbol\Sigma_1 = \boldsymbol\Sigma_2$: thay ma trận gộp bằng tổng sai số chuẩn của từng nhóm,
+
+$$
+T^2 = (\bar{\mathbf x}_1 - \bar{\mathbf x}_2)'\left[\frac{1}{n_1}\mathbf S_1 + \frac{1}{n_2}\mathbf S_2\right]^{-1}(\bar{\mathbf x}_1 - \bar{\mathbf x}_2),
+$$
+
+trong đó $\bar{\mathbf x}_\ell$, $\mathbf S_\ell$ là vectơ trung bình và ma trận hiệp phương sai mẫu của nhóm $\ell$ (Working: $n_1 = 1233$; Left: $n_2 = 237$), $\frac{1}{n_\ell}\mathbf S_\ell$ là ma trận hiệp phương sai ước lượng của $\bar{\mathbf x}_\ell$. Đây là bản nhiều chiều của thống kê Welch.
+
+- **Mẫu lớn** (Kết quả 6.4, khi $n_1 - p$ và $n_2 - p$ lớn): bác bỏ $H_0$ khi $T^2 > \chi^2_p(0.95)$. Theo định lý giới hạn trung tâm, kết quả này **không cần giả định chuẩn**.
+- **Hiệu chỉnh cho cỡ mẫu vừa** (công thức 6-27 đến 6-29, bài toán Behrens–Fisher nhiều chiều): $T^2 \sim \frac{\nu p}{\nu - p + 1}F_{p,\,\nu - p + 1}$ với bậc tự do ước lượng
+$$
+\nu = \frac{p + p^2}{\sum_{\ell=1}^{2}\frac{1}{n_\ell}\left\{\text{tr}\big[(\mathbf V_\ell \mathbf V^{-1})^2\big] + \big(\text{tr}[\mathbf V_\ell \mathbf V^{-1}]\big)^2\right\}}, \qquad \mathbf V_\ell = \frac{1}{n_\ell}\mathbf S_\ell,\ \mathbf V = \mathbf V_1 + \mathbf V_2,
+$$
+với $\min(n_1, n_2) \le \nu \le n_1 + n_2$; khi $p = 1$, cách này trở về kiểm định Welch.
+
+```{r t2-khac-hiep-phuong-sai}
+# T2 khi hai nhóm có ma trận hiệp phương sai khác nhau (J&W Kết quả 6.4 và 6-27 đến 6-29)
+t2_khac <- function(M, f) {
+  A <- M[f == levels(f)[1], ]; C <- M[f == levels(f)[2], ]; p_ <- ncol(M)
+  V1 <- cov(A) / nrow(A); V2 <- cov(C) / nrow(C); Vi <- solve(V1 + V2)
+  d_ <- colMeans(A) - colMeans(C)
+  T2_ <- as.numeric(t(d_) %*% Vi %*% d_)
+  tr <- function(Q) sum(diag(Q))
+  mau <- sum(sapply(list(list(V1, nrow(A)), list(V2, nrow(C))), function(z) {
+    Q <- z[[1]] %*% Vi; (tr(Q %*% Q) + tr(Q)^2) / z[[2]] }))
+  nu <- (p_ + p_^2) / mau
+  F_ <- T2_ * (nu - p_ + 1) / (nu * p_)
+  c(T2 = T2_, chi2_95 = qchisq(0.95, p_), p_chi2 = pchisq(T2_, p_, lower.tail = FALSE),
+    nu = nu, F = F_, df2 = nu - p_ + 1, p_F = pf(F_, p_, nu - p_ + 1, lower.tail = FALSE))
+}
+kq_t2 <- t2_khac(X, nhom)
+bang(data.frame(T2 = kq_t2["T2"], chi2 = kq_t2["chi2_95"], p1 = fp(kq_t2["p_chi2"]),
+                nu = kq_t2["nu"], F = kq_t2["F"], p2 = fp(kq_t2["p_F"])), digits = 2, row.names = FALSE,
+     col.names = c("T²", "χ²9(0.95)", "p-giá trị (mẫu lớn)", "ν", "F", "p-giá trị (hiệu chỉnh)"))
+```
+
+$T^2 = 138.7 > 16.92 = \chi^2_9(0.95)$, p-giá trị = 1.89e-25; với hiệu chỉnh cỡ mẫu vừa, $\nu = 356.9$, $F(9;\ 348.9) = 15.07$, p-giá trị = 1.02e-20. Cả hai p-giá trị < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình của hai nhóm khác nhau khi cho phép $\boldsymbol\Sigma_1 \neq \boldsymbol\Sigma_2$. $\nu = 356.9$ gần với $n_2 = 237$ hơn $n_1 + n_2 = 1470$, cho thấy độ bất định chủ yếu đến từ nhóm Left ít quan sát; $T^2$ này (138.7) gần với Hotelling $T^2$ dùng ma trận gộp (135.1), nên khác biệt hiệp phương sai không làm thay đổi kết luận.
+
+### MANOVA trên hạng (vi phạm chuẩn từng biến)
 
 Giả định chuẩn từng biến vi phạm nặng (mục 3) và 5/9 biến là biến thứ bậc chỉ có 4–5 mức, nên phép biến đổi (ví dụ log) không làm các biến này có phân phối chuẩn. Vì vậy, theo hướng xử lý ở mục 3, MANOVA được thực hiện lại trên **hạng** của từng biến (biến đổi hạng của Conover & Iman, 1981, *The American Statistician* 35(3)):
 
@@ -297,6 +337,8 @@ bs2 <- replicate(B_lan, {
   pillai_hai(Eb, nhom)
 })
 # MANOVA trên hạng
+kq_t2_kb2 <- t2_khac(M, nhom)
+# MANOVA trên hạng
 M_hang <- apply(M, 2, rank)
 pillai_hang2 <- pillai_hai(M_hang, nhom)
 set.seed(2026)
@@ -304,15 +346,19 @@ hang2 <- replicate(B_lan, pillai_hai(M_hang, sample(nhom)))
 
 kq_kb2 <- data.frame(
   phuong_phap = c("Wilks + xấp xỉ Bartlett", "Wilks, F chính xác", "Pillai", "Hoán vị Pillai",
-                  "PERMANOVA", "betadisper (độ phân tán)", "Bootstrap trong từng nhóm", "MANOVA trên hạng"),
+                  "PERMANOVA", "betadisper (độ phân tán)", "Bootstrap trong từng nhóm",
+                  "T² khi Σ1 ≠ Σ2 (mẫu lớn)", "T² khi Σ1 ≠ Σ2 (hiệu chỉnh ν)", "MANOVA trên hạng"),
   thong_ke = c(sprintf("Λ* = %.4f; %.2f", lambda2, bartlett2), sprintf("F(8, 1461) = %.2f", F2),
                sprintf("Pillai = %.4f", pillai2), sprintf("Pillai = %.4f (hoán vị lớn nhất %.4f)", pillai2, max(hv2)),
                sprintf("F = %.1f; R² = %.3f", perm2$F[1], perm2$R2[1]), sprintf("F = %.2f", beta2$`F value`[1]),
                sprintf("Pillai = %.4f (bootstrap lớn nhất %.4f)", pillai2, max(bs2)),
+               sprintf("T² = %.1f", kq_t2_kb2["T2"]),
+               sprintf("ν = %.1f; F = %.2f", kq_t2_kb2["nu"], kq_t2_kb2["F"]),
                sprintf("Pillai = %.4f (hoán vị lớn nhất %.4f)", pillai_hang2, max(hang2))),
   p = c(pchisq(bartlett2, p2, lower.tail = FALSE), pf(F2, p2, n - p2 - 1, lower.tail = FALSE),
         pf(F2, p2, n - p2 - 1, lower.tail = FALSE), p_mo_phong(hv2, pillai2), perm2$`Pr(>F)`[1],
-        beta2$`Pr(>F)`[1], p_mo_phong(bs2, pillai2), p_mo_phong(hang2, pillai_hang2)))
+        beta2$`Pr(>F)`[1], p_mo_phong(bs2, pillai2), kq_t2_kb2["p_chi2"], kq_t2_kb2["p_F"],
+        p_mo_phong(hang2, pillai_hang2)))
 kq_kb2$ket_luan <- ifelse(kq_kb2$p < 0.05, "Bác bỏ H0", "Không bác bỏ H0")
 kq_kb2$p <- fp(kq_kb2$p)
 bang(kq_kb2, row.names = FALSE, col.names = c("Phương pháp", "Thống kê", "p-giá trị", "Kết luận (5%)"),
@@ -321,6 +367,7 @@ bang(kq_kb2, row.names = FALSE, col.names = c("Phương pháp", "Thống kê", "
 
 - **Wilks và Pillai:** $\Lambda^* = 0.9157$, thống kê Bartlett 128.91 > 15.51 = $\chi^2_8(0.95)$, F(8, 1461) = 16.81, p-giá trị = 4.77e-24 < 0.05, nên ta bác bỏ $H_0$ với mức ý nghĩa 5%, nghĩa là vectơ trung bình 8 biến của hai nhóm khác nhau. Pillai = 0.0843, bằng kịch bản 1 đến chữ số thứ tư (0.08429 ở cả hai kịch bản): khi đã có `JobLevel`, `MonthlyIncome` hầu như không mang thêm thông tin phân biệt hai nhóm.
 - **Hoán vị, bootstrap, MANOVA trên hạng:** Pillai quan sát lớn hơn mọi giá trị mô phỏng dưới $H_0$ (lớn nhất 0.0177, 0.0241 và 0.0158), p-giá trị = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5% ở cả ba phương pháp.
+- **$T^2$ khi $\boldsymbol\Sigma_1 \neq \boldsymbol\Sigma_2$:** $T^2 = 136.5 > 15.51 = \chi^2_8(0.95)$, p-giá trị = 1.29e-25; với hiệu chỉnh, $\nu = 349.6$, $F = 16.72$, p-giá trị = 6.10e-21; cả hai < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%.
 - **PERMANOVA:** F = 26.9, R² = 0.018, p-giá trị = 0.001 < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%; `Attrition` giải thích 1.8% tổng biến thiên của 8 biến chuẩn hóa (1.9% ở kịch bản 1).
 - **betadisper:** F = 0.06, p-giá trị = 0.812 > 0.05 nên ta không bác bỏ $H_0$, nghĩa là chưa có cơ sở cho rằng độ phân tán của hai nhóm khác nhau; kết quả PERMANOVA phản ánh khác biệt về vị trí.
 
@@ -337,8 +384,10 @@ Kết luận của kịch bản 2 trùng với kịch bản 1 ở mọi phương
 | Hoán vị Pillai (B = 999) | Không chuẩn | Pillai = 0.0843 | 0.001 | Pillai = 0.0843 | 0.001 |
 | PERMANOVA (B = 999) | Không chuẩn | F = 28.2; R² = 0.019 | 0.001 | F = 26.9; R² = 0.018 | 0.001 |
 | Bootstrap trong từng nhóm (B = 999) | Box's M, cỡ mẫu không cân bằng | Pillai = 0.0843 | 0.001 | Pillai = 0.0843 | 0.001 |
+| $T^2$ khi $\Sigma_1 \neq \Sigma_2$, mẫu lớn (J&W Kết quả 6.4) | Box's M, không chuẩn | T² = 138.7 | 1.89e-25 | T² = 136.5 | 1.29e-25 |
+| $T^2$ khi $\Sigma_1 \neq \Sigma_2$, hiệu chỉnh ν (J&W 6-28) | Box's M, cỡ mẫu không cân bằng | F(9; 348.9) = 15.07 | 1.02e-20 | F(8; 342.6) = 16.72 | 6.10e-21 |
 | MANOVA trên hạng (B = 999) | Không chuẩn từng biến, thang thứ bậc | Pillai = 0.0923 | 0.001 | Pillai = 0.0899 | 0.001 |
 
-Ở cả 7 phương pháp và cả hai kịch bản, p-giá trị < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%.
+Ở cả 9 phương pháp và cả hai kịch bản, p-giá trị < 0.05 nên ta bác bỏ $H_0$ với mức ý nghĩa 5%.
 
 **Kết luận.** Với mức ý nghĩa 5%, tồn tại **khác biệt đa biến có ý nghĩa thống kê** giữa nhóm nhân viên đã nghỉ việc và nhóm đang làm việc trên vectơ 9 biến về thu nhập – nghề nghiệp, kinh nghiệm và tâm lý – hành vi. Kết luận này không thay đổi khi dùng các phương pháp vững với từng loại vi phạm (không chuẩn, ma trận hiệp phương sai khác nhau, cỡ mẫu không cân bằng) và khi bỏ `MonthlyIncome` để loại đa cộng tuyến (kịch bản 2, 8 biến). Mức khác biệt nhỏ (Pillai = 0.084; PERMANOVA R² = 1.9%), nghĩa là hai nhóm chồng lấn nhiều. Theo thống kê mô tả, nhóm nghỉ việc có thu nhập, cấp bậc, thâm niên và các mức hài lòng thấp hơn; những biến có khác biệt đáng kể được xác định ở mục 5.
