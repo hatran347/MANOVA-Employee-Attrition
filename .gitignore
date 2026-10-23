@@ -8,3 +8,4 @@
 data/*.xls
 data/*.xlsx
 .DS_Store
+.vscode
