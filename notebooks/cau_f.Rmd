@@ -438,6 +438,162 @@ Ngược lại, hiệu ứng tương tác Attrition × OverTime không có ý ng
 Các kết luận được diễn giải thận trọng do một số giả định của MANOVA cổ điển chưa được đáp ứng đầy đủ.
 
 
+## Kiểm tra độ vững của hiệu ứng tương tác
+
+Do dữ liệu không đáp ứng đầy đủ giả định chuẩn đa biến và đồng nhất ma trận hiệp phương sai, nhóm thực hiện thêm kiểm định hoán vị Freedman–Lane và bootstrap phân tầng theo bốn nhóm `Attrition × OverTime`. Hai phương pháp được dùng để đối chiếu kết luận về hiệu ứng tương tác.
+
+### Kiểm định hoán vị Freedman–Lane
+
+Dưới giả thuyết không có tương tác, xét mô hình rút gọn chỉ gồm hai hiệu ứng chính:
+
+$$
+\mathbf{Y} = \boldsymbol{\mu}
++ \boldsymbol{\alpha}_i
++ \boldsymbol{\beta}_j
++ \boldsymbol{\varepsilon}.
+$$
+
+Phương pháp Freedman–Lane hoán vị đồng thời các hàng của ma trận phần dư từ mô hình rút gọn, cộng với giá trị dự báo của mô hình này, sau đó kiểm định lại tương tác. Thống kê sử dụng là Pillai's Trace.
+
+```{r f-freedman-lane}
+# hoán vị freedman-lane cho hiệu ứng tương tác
+set.seed(2026)
+f_B_robust <- 999L
+
+f_X_reduced <- model.matrix(
+  ~ Attrition + OverTime,
+  data = f_dat
+)
+
+f_fit_reduced <- lm.fit(f_X_reduced, f_Y)
+
+f_Y_hat <- f_X_reduced %*% f_fit_reduced$coefficients
+f_E_reduced <- f_fit_reduced$residuals
+
+f_pillai_interaction <- function(Y) {
+  fit_full <- lm.fit(f_X, Y)
+  fit_red <- lm.fit(f_X_reduced, Y)
+
+  E <- crossprod(fit_full$residuals)
+  H <- crossprod(fit_red$residuals) - E
+
+  as.numeric(sum(diag(
+    solve(E + H, H)
+  )))
+}
+
+f_V_observed <- f_pillai_interaction(f_Y)
+
+f_V_permutation <- replicate(f_B_robust, {
+  idx <- sample.int(nrow(f_Y))
+  Y_star <- f_Y_hat + f_E_reduced[idx, , drop = FALSE]
+  f_pillai_interaction(Y_star)
+})
+
+f_p_freedman_lane <- (
+  1 + sum(f_V_permutation >= f_V_observed - 1e-12)
+) / (f_B_robust + 1)
+
+f_fl_result <- data.frame(
+  Phuong_phap = "Freedman-Lane",
+  Pillai = f_V_observed,
+  So_hoan_vi = f_B_robust,
+  p_value = f_p_freedman_lane,
+  Ket_luan = ifelse(
+    f_p_freedman_lane < 0.05,
+    "Có ý nghĩa",
+    "Không có ý nghĩa"
+  )
+)
+
+bang(
+  f_fl_result,
+  digits = 5,
+  caption = "Kiểm định hoán vị Freedman–Lane cho hiệu ứng tương tác",
+  row.names = FALSE
+)
+```
+
+**Nhận xét:** Kiểm định hoán vị Freedman–Lane với 999 lần hoán vị cho kết quả Pillai = 0.00087 và p = 0.88 > 0.05. Do đó, chưa có đủ bằng chứng thống kê về hiệu ứng tương tác giữa Attrition và OverTime. Kết luận này nhất quán với MANOVA cổ điển (p = 0.86689).
+### Bootstrap phân tầng theo bốn nhóm
+
+Hiệu ứng tương tác được biểu diễn bằng tương phản giữa bốn vectơ trung bình:
+
+$$
+\boldsymbol{\Delta}_{AB}
+=
+(\boldsymbol{\mu}_{11}-\boldsymbol{\mu}_{10})
+-
+(\boldsymbol{\mu}_{01}-\boldsymbol{\mu}_{00}).
+$$
+
+Bootstrap được thực hiện bằng cách lấy mẫu lại có hoàn lại trong từng nhóm `Attrition × OverTime`, giữ nguyên cỡ mẫu của mỗi nhóm. Từ đó, xây dựng khoảng tin cậy percentile 95% cho tương phản tương tác của từng biến phụ thuộc.
+
+```{r f-bootstrap-interaction}
+# bootstrap phan tang trong bon o
+set.seed(2026)
+
+f_cell_index <- split(
+  seq_len(nrow(f_dat)),
+  interaction(f_dat$Attrition, f_dat$OverTime, drop = TRUE)
+)
+
+f_interaction_contrast <- function(Y, indices) {
+  mu <- lapply(indices, function(idx) {
+    colMeans(Y[idx, , drop = FALSE])
+  })
+
+  # thu tu: No.No, Yes.No, No.Yes, Yes.Yes
+  (mu[["Yes.Yes"]] - mu[["Yes.No"]]) -
+    (mu[["No.Yes"]] - mu[["No.No"]])
+}
+
+f_delta_observed <- f_interaction_contrast(
+  f_Y, f_cell_index
+)
+
+f_delta_boot <- replicate(f_B_robust, {
+  boot_idx <- lapply(f_cell_index, function(idx) {
+    sample(idx, size = length(idx), replace = TRUE)
+  })
+
+  f_interaction_contrast(f_Y, boot_idx)
+})
+
+f_delta_boot <- matrix(
+  f_delta_boot,
+  nrow = length(f_vars)
+)
+
+f_ci_boot <- t(apply(
+  f_delta_boot,
+  1,
+  quantile,
+  probs = c(0.025, 0.975),
+  names = FALSE
+))
+
+f_boot_result <- data.frame(
+  Bien_phu_thuoc = f_vars,
+  Tuong_tac_uoc_luong = as.numeric(f_delta_observed),
+  CI_lower = f_ci_boot[, 1],
+  CI_upper = f_ci_boot[, 2],
+  Ket_luan = ifelse(
+    f_ci_boot[, 1] > 0 | f_ci_boot[, 2] < 0,
+    "Khoảng tin cậy không chứa 0",
+    "Khoảng tin cậy chứa 0"
+  )
+)
+
+bang(
+  f_boot_result,
+  digits = 5,
+  caption = "Bootstrap phân tầng: khoảng tin cậy 95% cho tương phản tương tác",
+  row.names = FALSE
+)
+```
+
+**Nhận xét:** Kết quả bootstrap phân tầng cho thấy khoảng tin cậy 95% của hiệu ứng tương tác đều chứa 0 ở cả bốn biến phụ thuộc. Do đó, chưa có đủ bằng chứng thống kê về hiệu ứng tương tác giữa Attrition và OverTime trên từng biến. Kết quả này nhất quán với MANOVA cổ điển và kiểm định hoán vị Freedman–Lane.
 
 
 ## Phân tích sau MANOVA hai nhân tố
@@ -606,6 +762,102 @@ Xét về độ lớn hiệu ứng, các giá trị partial eta-squared nhìn ch
 **Nhìn chung**, kết quả sau hiệu chỉnh Holm củng cố tính nhất quán của các kết luận ANOVA đơn biến. Tuy nhiên, phương pháp Holm chỉ kiểm soát sai lầm loại I khi thực hiện nhiều kiểm định, không khắc phục các vi phạm giả định của MANOVA cổ điển.
 
 
+### ANOVA hai nhân tố với sai số chuẩn vững HC3
+
+Do kiểm định Levene cho thấy phương sai của một số biến phụ thuộc không đồng nhất giữa các nhóm, nhóm thực hiện thêm kiểm định ANOVA Type III với ma trận hiệp phương sai vững HC3.
+
+HC3 điều chỉnh cách ước lượng phương sai của các hệ số hồi quy, không thay đổi các hệ số ước lượng. Mỗi hiệu ứng được kiểm định bằng Wald F; p-value tiếp tục được hiệu chỉnh Holm riêng cho bốn biến phụ thuộc thuộc cùng một hiệu ứng.
+
+```{r f-anova-hc3,  message=FALSE, warning=FALSE}
+# anova type iii voi ma tran hiep phuong sai hc3
+f_hc3_results <- do.call(rbind, lapply(f_vars, function(v) {
+  fit <- f_anova_models[[v]]
+
+  tab <- as.data.frame(
+    car::Anova(
+      fit,
+      type = "III",
+      white.adjust = "hc3"
+    )
+  )
+
+  # xac dinh cot thong ke f va p-value
+  f_col <- intersect(c("F value", "F"), colnames(tab))
+  p_col <- grep("^Pr\\(>F\\)$", colnames(tab), value = TRUE)
+
+  if (length(f_col) == 0 || length(p_col) == 0) {
+    stop(
+      "Không tìm thấy cột F hoặc p-value. Các cột hiện có: ",
+      paste(colnames(tab), collapse = ", ")
+    )
+  }
+
+  if (!all(effects %in% rownames(tab))) {
+    stop(
+      "Không tìm thấy đủ các hiệu ứng. Các dòng hiện có: ",
+      paste(rownames(tab), collapse = ", ")
+    )
+  }
+
+  data.frame(
+    Variable = rep(v, length(effects)),
+    Effect = effects,
+    F_HC3 = as.numeric(tab[effects, f_col[1]]),
+    p_HC3 = as.numeric(tab[effects, p_col[1]]),
+    row.names = NULL
+  )
+}))
+```
+
+
+```{r f-hc3-table}
+# hiệu chỉnh holm cho từng hiệu ứng
+f_hc3_results$p_HC3_Holm <- ave(
+  f_hc3_results$p_HC3,
+  f_hc3_results$Effect,
+  FUN = function(p) p.adjust(p, method = "holm")
+)
+
+f_hc3_results$Conclusion_HC3 <- ifelse(
+  f_hc3_results$p_HC3_Holm < 0.05,
+  "Có ý nghĩa",
+  "Không có ý nghĩa"
+)
+
+# đối chiếu với anova thông thường
+f_hc3_compare <- merge(
+  f_anova_holm[, c("Variable", "Effect", "p_holm")],
+  f_hc3_results,
+  by = c("Variable", "Effect"),
+  sort = FALSE
+)
+
+f_hc3_compare <- f_hc3_compare[
+  order(
+    match(f_hc3_compare$Effect, effects),
+    match(f_hc3_compare$Variable, f_vars)
+  ),
+]
+
+rownames(f_hc3_compare) <- NULL
+
+knitr::kable(
+  f_hc3_compare[, c(
+    "Variable", "Effect", "p_holm",
+    "F_HC3", "p_HC3", "p_HC3_Holm", "Conclusion_HC3"
+  )],
+  digits = 5,
+  caption = "Đối chiếu ANOVA Type III thông thường và ANOVA với HC3",
+  row.names = FALSE
+)
+```
+
+**Nhận xét:** Kết quả ANOVA hai nhân tố với sai số chuẩn vững HC3 và hiệu chỉnh Holm nhìn chung nhất quán với ANOVA Type III thông thường. Đối với **Attrition**, ba biến `JobSatisfaction`, `EnvironmentSatisfaction` và `JobInvolvement` vẫn có ý nghĩa thống kê (p Holm < 0.05). Riêng `WorkLifeBalance` không còn ý nghĩa khi sử dụng HC3 (p Holm = 0.05108 > 0.05), khác với ANOVA thông thường (p Holm = 0.02707).
+
+Đối với **OverTime**, chỉ `EnvironmentSatisfaction` có ý nghĩa thống kê (p Holm = 0.01110). Hiệu ứng tương tác **Attrition × OverTime** không có ý nghĩa đối với cả bốn biến (p Holm = 1).
+
+Như vậy, kết quả HC3 củng cố phần lớn kết luận ban đầu, đồng thời cho thấy kết luận về `WorkLifeBalance` khá nhạy với giả định đồng nhất phương sai. Không tìm thấy bằng chứng thống kê về hiệu ứng tương tác giữa hai nhân tố.
+
 ### Phân tích trung bình biên ước lượng
 
 Do số lượng quan sát giữa bốn nhóm không bằng nhau, sử dụng trung bình biên ước lượng (Estimated Marginal Means – EMM) để so sánh các mức của từng nhân tố.
@@ -770,21 +1022,74 @@ ggplot(
 
 ## Tổng hợp và kết luận
 
-Kết quả MANOVA hai nhân tố (Type III) cho thấy cả **Attrition** (Pillai = 0.05027; $F(4,1463)=19.360$; $p<0.001$) và **OverTime** (Pillai = 0.01042; $F(4,1463)=3.852$; $p=0.00405$) đều có ý nghĩa thống kê đối với vectơ bốn biến tâm lý – hành vi. Ngược lại, hiệu ứng tương tác **Attrition × OverTime** không có ý nghĩa thống kê (Pillai = 0.00087; $p=0.86689$). Như vậy, có bằng chứng về sự khác biệt đa biến theo từng nhân tố, nhưng chưa có đủ bằng chứng cho thấy sự khác biệt theo một nhân tố phụ thuộc vào mức của nhân tố còn lại.
 
-Phân tích ANOVA hai nhân tố (Type III) cho từng biến phụ thuộc, kết hợp **hiệu chỉnh p-value bằng phương pháp Holm** trong từng họ kiểm định, cho thấy kết luận không thay đổi so với kết quả sử dụng p-value gốc:
+```{r f-summary-table, echo=FALSE, message=FALSE, warning=FALSE}
+# ham dem so bien co y nghia
+f_count_sig <- function(df, effect, p_col) {
+  p <- as.numeric(df[df$Effect == effect, p_col])
+  paste0(sum(p < 0.05, na.rm = TRUE), "/4 biến")
+}
 
-- **Attrition:** Có ý nghĩa thống kê đối với cả bốn biến `JobSatisfaction`, `EnvironmentSatisfaction`, `WorkLifeBalance` và `JobInvolvement`. Đáng chú ý, `WorkLifeBalance` vẫn có ý nghĩa sau hiệu chỉnh Holm ($p_{\mathrm{Holm}}=0.02707$).
-- **OverTime:** Chỉ có ý nghĩa thống kê đối với `EnvironmentSatisfaction` ($p_{\mathrm{Holm}}=0.00668$).
-- **Attrition × OverTime:** Không có hiệu ứng tương tác có ý nghĩa thống kê đối với bất kỳ biến phụ thuộc nào sau hiệu chỉnh Holm.
+# dem so khoang tin cay bootstrap chua 0
+f_boot_contains_zero <- sum(
+  as.numeric(f_boot_result$CI_lower) <= 0 &
+  as.numeric(f_boot_result$CI_upper) >= 0,
+  na.rm = TRUE
+)
 
-Xét về **độ lớn hiệu ứng**, các hệ số partial eta-squared ($\eta_p^2$) đều tương đối nhỏ. Đối với Attrition, giá trị lớn nhất thuộc về `JobInvolvement` ($\eta_p^2=0.01761$), tiếp theo là `EnvironmentSatisfaction` ($0.01550$), `JobSatisfaction` ($0.01258$) và `WorkLifeBalance` ($0.00333$). Điều này cho thấy ý nghĩa thống kê của các hiệu ứng không đồng nghĩa với mức độ khác biệt lớn về mặt thực tiễn.
+# tao bang tong hop
+f_summary_table <- data.frame(
+  "Phương pháp" = c(
+    "MANOVA Type III (Pillai)",
+    "Hoán vị Freedman-Lane",
+    "Bootstrap phân tầng 95%",
+    "ANOVA Type III + Holm",
+    "ANOVA HC3 + Holm"
+  ),
+  "Attrition" = c(
+    "Có ý nghĩa (p < 0.001)",
+    "—",
+    "—",
+    f_count_sig(f_anova_holm, "Attrition", "p_holm"),
+    f_count_sig(f_hc3_results, "Attrition", "p_HC3_Holm")
+  ),
+  "OverTime" = c(
+    "Có ý nghĩa (p = 0.00405)",
+    "—",
+    "—",
+    f_count_sig(f_anova_holm, "OverTime", "p_holm"),
+    f_count_sig(f_hc3_results, "OverTime", "p_HC3_Holm")
+  ),
+  "Tương tác" = c(
+    "Không (p = 0.86689)",
+    paste0(
+      ifelse(f_p_freedman_lane < 0.05, "Có ý nghĩa", "Không"),
+      " (p = ", sprintf("%.5f", f_p_freedman_lane), ")"
+    ),
+    paste0(f_boot_contains_zero, "/4 khoảng tin cậy chứa 0"),
+    f_count_sig(f_anova_holm, "Attrition:OverTime", "p_holm"),
+    f_count_sig(f_hc3_results, "Attrition:OverTime", "p_HC3_Holm")
+  ),
+  check.names = FALSE
+)
 
-Kết quả phân tích **trung bình biên ước lượng (EMM)** cho thấy nhóm nhân viên đang làm việc (Attrition = No) có điểm trung bình biên cao hơn nhóm đã nghỉ việc (Attrition = Yes) ở cả bốn biến tâm lý – hành vi. Trong đó, mức chênh lệch lớn nhất thuộc về `EnvironmentSatisfaction` (khoảng 0.38 điểm), tiếp theo là `JobSatisfaction` (0.35 điểm), `JobInvolvement` (0.27 điểm) và `WorkLifeBalance` (0.11 điểm).
+# in bang html
+knitr::kable(
+  f_summary_table,
+  caption = "Tổng hợp kết quả MANOVA hai nhân tố và các kiểm định bổ sung",
+  align = "llll",
+  row.names = FALSE
+)
+```
 
-Đối với OverTime, nhóm làm thêm giờ (OverTime = Yes) có mức `EnvironmentSatisfaction` trung bình biên cao hơn nhóm không làm thêm khoảng **0.25 điểm**. Hiệu ứng này vẫn có ý nghĩa thống kê theo kết quả ANOVA sau hiệu chỉnh Holm ($p_{\mathrm{Holm}}=0.00668$). Tuy nhiên, đây chỉ là mối liên hệ thống kê, không đủ cơ sở để kết luận rằng làm thêm giờ làm tăng mức độ hài lòng với môi trường làm việc.
-
-**Kết luận chung:** Tình trạng nghỉ việc và làm thêm giờ có liên hệ với sự khác biệt đa biến về các đặc điểm tâm lý – hành vi của nhân viên. Trong đó, Attrition có mối liên hệ rõ rệt hơn trên cả bốn biến phụ thuộc, còn OverTime chủ yếu liên quan đến `EnvironmentSatisfaction`. Không tìm thấy bằng chứng thống kê về hiệu ứng tương tác giữa hai nhân tố.
 
 
+Kết quả MANOVA hai nhân tố cho thấy **Attrition** (Pillai = 0.05027; p < 0.001) và **OverTime** (Pillai = 0.01042; p = 0.00405) đều có ý nghĩa thống kê đối với bốn biến tâm lý – hành vi. Trong khi đó, tương tác Attrition × OverTime không có ý nghĩa (p = 0.86689).
 
+Kết quả này cũng phù hợp với kiểm định hoán vị **Freedman–Lane** (p = 0.88). Ngoài ra, khoảng tin cậy bootstrap 95% của hiệu ứng tương tác ở cả bốn biến đều chứa 0. Như vậy, các kiểm định bổ sung đều chưa tìm thấy bằng chứng về hiệu ứng tương tác giữa hai nhân tố.
+
+Khi phân tích từng biến bằng ANOVA Type III và hiệu chỉnh Holm, Attrition có ý nghĩa đối với cả bốn biến, còn OverTime chỉ có ý nghĩa đối với `EnvironmentSatisfaction`. Tuy nhiên, khi sử dụng **sai số chuẩn vững HC3**, `WorkLifeBalance` không còn ý nghĩa theo Attrition (p Holm = 0.05108), trong khi ba biến còn lại vẫn có ý nghĩa. Kết quả này cho thấy sự khác biệt về `WorkLifeBalance` chưa thật sự ổn định khi thay đổi cách ước lượng phương sai.
+
+Về trung bình biên ước lượng (EMM), nhóm nhân viên đã nghỉ việc có điểm hài lòng và tham gia công việc thấp hơn nhóm đang làm việc ở cả bốn biến. Riêng nhóm làm thêm giờ có điểm `EnvironmentSatisfaction` cao hơn khoảng 0.25 điểm. Tuy nhiên, độ lớn các hiệu ứng nhìn chung nhỏ.
+
+**Nhìn chung**, tình trạng nghỉ việc và làm thêm giờ có liên hệ với các đặc điểm tâm lý – hành vi của nhân viên, nhưng chưa có bằng chứng về hiệu ứng tương tác giữa hai nhân tố. Do dữ liệu chưa đáp ứng đầy đủ các giả định của MANOVA, các kết quả cần được diễn giải thận trọng và không thể xem là bằng chứng về quan hệ nhân quả.
