@@ -1,6 +1,6 @@
 ---
 title: "Nhận xét và ý nghĩa thực tiễn"
-author: "Vũ Hà Thư - 25C23004"
+author: "Trần Việt Hà"
 output:
   html_document:
     toc: true
@@ -85,6 +85,5 @@ bang(tl_tam_ly, col.names = c("Mức 1", "Mức 2", "Mức 3", "Mức 4"),
 1. **Ưu tiên nhóm nhân viên cấp thấp, thu nhập thấp.** Rà soát mức lương của cấp bậc 1 so với thị trường, xây dựng lộ trình thăng tiến rõ ràng từ cấp 1 lên cấp 2 (tỷ lệ nghỉ việc giảm từ 26.3% xuống 9.7% giữa hai cấp này).
 2. **Giữ chân nhân viên trong những năm đầu.** Gần 30% nhân viên có thâm niên 0–2 năm đã nghỉ việc; chương trình hội nhập (onboarding), người hướng dẫn (mentoring) và đánh giá định kỳ trong 2 năm đầu là giai đoạn có tác động lớn nhất.
 3. **Theo dõi mức độ hài lòng và gắn kết.** Khảo sát định kỳ hài lòng công việc, môi trường làm việc, cân bằng công việc – cuộc sống và mức độ tham gia; nhân viên chọn mức thấp nhất ở bất kỳ thang nào là nhóm có tỷ lệ nghỉ việc cao (22.8–33.7%), cần được quản lý trực tiếp trao đổi và có biện pháp hỗ trợ sớm.
-4. **Kết hợp nhiều chỉ số thay vì một chỉ số.** Vì mỗi biến chỉ khác biệt nhỏ giữa hai nhóm, hệ thống cảnh báo sớm nên kết hợp cấp bậc, thâm niên, thu nhập và các chỉ số hài lòng. Việc dự báo trực tiếp nhân viên nào có khả năng nghỉ việc cần mô hình phân loại (ví dụ hồi quy logistic với `Attrition` là biến phụ thuộc), thảo luận ở mục 8.
 
 **Giới hạn của các nhận xét trên.** Dữ liệu là dữ liệu cắt ngang và MANOVA chỉ cho biết hai nhóm khác nhau về trung bình, không chứng minh quan hệ nhân quả: thu nhập thấp có thể đi cùng nghỉ việc vì nhân viên nghỉ việc thường là người mới vào, cấp thấp. Các biến thu nhập, cấp bậc và thâm niên tương quan mạnh với nhau (mục 3), nên ảnh hưởng riêng của từng biến lên quyết định nghỉ việc chưa tách được ở đây.

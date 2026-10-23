@@ -32,7 +32,7 @@ fp <- function(x) sapply(x, function(v) format(signif(v, 3), digits = 3))
 # Muc do vi pham gia dinh theo quy uoc cua mon hoc
 muc_do <- function(pv) ifelse(pv >= 0.05, "Thỏa", ifelse(pv >= 1e-4, "Vi phạm nhẹ", "Vi phạm nặng"))
 
-# Bang dinh dang dung chung: kable + kableExtra (soc, gon, can giua; tu thu nho trong PDF)
+# Bang dinh dang dung chung: kable + kableExtra (soc, gon, can giua)
 # kableExtra la goi tuy chon: neu chua cai duoc thi bang() van chay, chi khong co dinh dang them.
 if (!requireNamespace("kableExtra", quietly = TRUE)) {
   try(install.packages("kableExtra"), silent = TRUE)
@@ -40,18 +40,10 @@ if (!requireNamespace("kableExtra", quietly = TRUE)) {
 co_kableExtra <- requireNamespace("kableExtra", quietly = TRUE)
 
 bang <- function(x, ..., digits = 3, caption = NULL, soc = TRUE) {
-  # Ban PDF: thoat cac ky tu dac biet cua LaTeX trong tieu de bang (_ % # & $)
-  if (!is.null(caption) && knitr::is_latex_output()) caption <- gsub("([_%#&$])", "\\\\\\1", caption)
-  # Ban PDF: dung tabular thuong (khong dung longtable) de scale_down thu nho bang vua khung trang
-  if (knitr::is_latex_output()) {
-    k <- knitr::kable(x, format = "latex", digits = digits, caption = caption, booktabs = TRUE, longtable = FALSE, ...)
-  } else {
-    k <- knitr::kable(x, digits = digits, caption = caption, booktabs = TRUE, ...)
-  }
+  k <- knitr::kable(x, digits = digits, caption = caption, ...)
   if (!co_kableExtra) return(k)
   kableExtra::kable_styling(k, bootstrap_options = c(if (soc) "striped", "hover", "condensed"),
-                            full_width = FALSE, position = "center",
-                            latex_options = c("hold_position", "scale_down", if (soc) "striped"))
+                            full_width = FALSE, position = "center")
 }
 
 # Cac ham dinh dang bo sung cua kableExtra; bo qua neu chua co goi

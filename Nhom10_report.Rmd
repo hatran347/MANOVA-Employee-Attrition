@@ -1,0 +1,86 @@
+---
+title: "Bài thực hành 1 – Chương 4: Phân tích phương sai nhiều chiều (MANOVA)"
+subtitle: "Dữ liệu nghỉ việc của nhân viên (DataEA)"
+author: Nhóm 10 
+date: "`r format(Sys.Date(), '%d/%m/%Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    df_print: kable
+---
+
+```{r setup, include=FALSE}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
+source(here::here("R", "setup.R"))
+source(here::here("R", "du_lieu.R"))
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.align = "center")
+
+# Gộp một notebook vào báo cáo: bỏ YAML và chunk setup (đã chạy ở trên),
+# lấy title của notebook làm tiêu đề cấp 1.
+gop_cau <- function(file) {
+  dong <- readLines(file, encoding = "UTF-8")
+  yaml <- which(dong == "---")[1:2]
+  title <- sub('^title:\\s*"?(.*?)"?\\s*$', "\\1", grep("^title:", dong[yaml[1]:yaml[2]], value = TRUE))
+  dong <- dong[-(1:yaml[2])]
+
+  bd_setup <- grep("^```\\{r setup", dong)
+  if (length(bd_setup) == 1) {
+    kt_setup <- bd_setup + which(dong[(bd_setup + 1):length(dong)] == "```")[1]
+    dong <- dong[-(bd_setup:kt_setup)]
+  }
+
+  knitr::knit_child(text = c(paste("#", title), "", dong), envir = knitr::knit_global(), quiet = TRUE)
+}
+```
+
+```{r thong-tin-html, echo=FALSE, results="asis"}
+cat('<div style="text-align:center; margin:1.5em 0 2em;">',
+    '<p style="margin:0;"><b>Môn học:</b> Thống kê nhiều chiều &nbsp;|&nbsp; <b>Giảng viên hướng dẫn:</b> TS. Nguyễn Thị Mộng Ngọc</p>',
+    '<p style="margin:0;"><b>Nhóm 10 – Học viên thực hiện:</b> Vũ Hà Thư (25C23004), Trần Việt Hà (25C23020)</p>',
+    '</div>', sep = "\n")
+# Bảng phân công dựng bằng HTML trực tiếp để hiển thị giống nhau trên mọi máy (không phụ thuộc kableExtra)
+cong_viec <- list(
+  c("Mục 1: Câu hỏi nghiên cứu và quy ước", "Mục 2 (câu a): Xác định mô hình, biến và giả thuyết",
+    "Mục 3 (câu b): Kiểm tra giả định", "Mục 4 (câu c): Kiểm định MANOVA một nhân tố",
+    "Mục 5 (câu d): Phân tích hậu nghiệm"),
+  c("Mục 6 (câu e): Nhận xét và ý nghĩa thực tiễn", "Mục 7 (câu f): MANOVA hai nhân tố",
+    "Mục 8 (câu g): Hạn chế của MANOVA và phương pháp thay thế", "Tổng kết báo cáo",
+    "Rà soát, chỉnh sửa và hoàn thiện báo cáo tổng thể"))
+thanh_vien <- data.frame(ho_ten = c("Vũ Hà Thư", "Trần Việt Hà"), mshv = c("25C23004", "25C23020"))
+o_kieu  <- "border:1px solid #bbb; padding:8px 12px; vertical-align:top;"
+dau_kieu <- paste(o_kieu, "background:#f2f2f2; font-weight:bold; text-align:center; vertical-align:middle;")
+dong <- vapply(1:2, function(i) paste0(
+  "<tr>",
+  "<td style='", o_kieu, " text-align:center;'>", i, "</td>",
+  "<td style='", o_kieu, " white-space:nowrap;'>", thanh_vien$ho_ten[i], "</td>",
+  "<td style='", o_kieu, " text-align:center;'>", thanh_vien$mshv[i], "</td>",
+  "<td style='", o_kieu, "'><ul style='margin:0; padding-left:1.2em;'>",
+  paste0("<li>", cong_viec[[i]], "</li>", collapse = ""), "</ul></td>",
+  "<td style='", o_kieu, " text-align:center;'>100%</td>",
+  "</tr>"), character(1))
+cat("<p style='text-align:center; font-weight:bold; font-size:1.15em; margin:0.5em 0;'>BẢNG PHÂN CÔNG CÔNG VIỆC</p>",
+    "<table style='border-collapse:collapse; margin:0 auto 2em; font-size:0.95em;'>",
+    paste0("<tr>", paste0("<th style='", dau_kieu, "'>",
+                          c("STT", "Họ và tên", "MSHV", "Nội dung phụ trách", "Mức độ hoàn thành"), "</th>", collapse = ""), "</tr>"),
+    dong, "</table>", sep = "\n")
+```
+
+# Câu hỏi nghiên cứu và quy ước
+
+- **MANOVA một nhân tố:** Nhóm nhân viên đã nghỉ việc và nhóm đang làm việc có khác nhau khi xét đồng thời 9 đặc điểm về thu nhập – nghề nghiệp, kinh nghiệm làm việc và tâm lý – hành vi hay không?
+- **MANOVA hai nhân tố:** Tình trạng nghỉ việc (`Attrition`) và việc làm thêm giờ (`OverTime`) có ảnh hưởng đến vectơ 4 biến tâm lý – hành vi không, và hai yếu tố này có tương tác với nhau không?
+
+Toàn bài dùng mức ý nghĩa **α = 0.05** (độ tin cậy 95%), trừ khi ghi rõ mức khác.
+
+**Quy ước mức độ vi phạm giả định** (dựa trên p-giá trị của kiểm định giả định): p ≥ 0.05 là **thỏa**; 1e-4 ≤ p < 0.05 là **vi phạm nhẹ**; p < 1e-4 là **vi phạm nặng**.
+
+```{r gop-cac-cau, echo=FALSE, results="asis"}
+for (cau in c("a", "b", "c", "d", "e", "f", "g")) {
+  cat(gop_cau(here::here("notebooks", paste0("cau_", cau, ".Rmd"))), sep = "\n")
+}
+```
+
